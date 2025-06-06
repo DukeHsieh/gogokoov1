@@ -9,9 +9,10 @@
   ],
   "scripts": {
     "install:all": "npm install && npm install --prefix client && npm install --prefix server",
-    "dev": "concurrently \"npm run dev:client\" \"npm run dev:server\"",
+    "dev": "npm run dev:server",
     "dev:client": "npm start --prefix client",
     "dev:server": "npm run dev --prefix server",
+    "dev:both": "echo 'Warning: Client and Server both use port 80. Run them separately or use different ports.'",
     "build": "npm run build:client && npm run build:server",
     "build:client": "npm run build --prefix client",
     "build:server": "npm run build --prefix server",
