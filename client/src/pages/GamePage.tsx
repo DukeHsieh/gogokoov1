@@ -334,7 +334,7 @@ const GamePage: React.FC = () => {
       // Don't disconnect during game - let WebSocketManager handle this
       console.log('GamePage component unmounting, message handler removed');
     };
-  }, [roomId, gameSettings, playerNickname, isHost, waitingForGameData, generateCards, gameState.score, initializeGameWithData]);
+  }, [roomId, gameSettings, playerNickname, isHost, waitingForGameData, generateCards, initializeGameWithData]);
 
   // Listen for gameDataReceived event from GameRoom
   useEffect(() => {
@@ -443,20 +443,20 @@ const GamePage: React.FC = () => {
           }
 
           return { ...prev, cards, score: newScore };
-        }
-
-        // 配對失敗，延遲翻回
-        // 播放配對失敗音效
-        setTimeout(() => soundEffects.mismatch(), 500);
-        setTimeout(() => {
-          setGameState(prev => {
-            const cards = [...prev.cards];
-            cards.forEach(card => {
-              if (!card.isMatched) card.isFlipped = false;
+        } 
+          // 配對失敗，延遲翻回
+          // 播放配對失敗音效
+          console.log('Mismatch! ',  flippedCards[0].value, clickedCard.value);
+          setTimeout(() => soundEffects.mismatch(), 500);
+          setTimeout(() => {
+            setGameState(prev => {
+              const cards = [...prev.cards];
+              cards.forEach(card => {
+                if (!card.isMatched) card.isFlipped = false;
+              });
+              return { ...prev, cards };
             });
-            return { ...prev, cards };
-          });
-        }, 1000);
+          }, 1000);
       }
 
       return { ...prev, cards };
