@@ -501,8 +501,8 @@ const GamePage: React.FC = () => {
                 <MuiCard
                   sx={{
                     cursor: gameState.status === 'playing' ? 'pointer' : 'default',
-                    height: '100px',
-                    width: '80px',
+                    height: '120px',
+                    width: '90px',
                     display: 'flex',
                     justifyContent: 'center',
                     alignItems: 'center',
@@ -510,6 +510,7 @@ const GamePage: React.FC = () => {
                     transform: card.isFlipped ? 'rotateY(180deg)' : 'none',
                     transition: 'transform 0.6s',
                     opacity: gameState.status === 'ended' ? 0.8 : 1,
+                    padding: '0',
                   }}
                   onClick={() => gameState.status === 'playing' && handleCardClick(card.id)}
                 >
@@ -517,13 +518,20 @@ const GamePage: React.FC = () => {
                     sx={{
                       transform: card.isFlipped ? 'rotateY(180deg)' : 'none',
                       transition: 'transform 0.6s',
+                      padding: '4px',
+                      '&:last-child': { paddingBottom: '4px' },
+                      height: '100%',
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
                     }}
                   >
                     {card.isFlipped || card.isMatched ? (
                       <Box
                         sx={{
                           width: '100%',
-                          height: '80px',
+                          height: '100%',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -544,7 +552,7 @@ const GamePage: React.FC = () => {
                       <Box
                         sx={{
                           width: '100%',
-                          height: '80px',
+                          height: '100%',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
