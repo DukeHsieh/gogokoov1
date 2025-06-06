@@ -1,0 +1,198 @@
+interface GameState {
+  isGameActive: boolean;
+  roomId: string | null;
+  playerNickname: string | null;
+  isHost: boolean;
+}
+
+class WebSocketManager {
+  private static instance: WebSocketManager;
+  private ws: WebSocket | null = null;
+  private gameState: GameState = {
+    isGameActive: false,
+    roomId: null,
+    playerNickname: null,
+    isHost: false
+  };
+  private messageHandlers: Map<string, (message: any) => void> = new Map();
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 5;
+  private reconnectDelay = 1000;
+
+  private constructor() {}
+
+  public static getInstance(): WebSocketManager {
+    if (!WebSocketManager.instance) {
+      WebSocketManager.instance = new WebSocketManager();
+    }
+    return WebSocketManager.instance;
+  }
+
+  public connect(roomId: string, nickname: string, isHost: boolean): Promise<WebSocket> {
+    return new Promise((resolve, reject) => {
+      // 如果已經有連接且參數相同，直接返回現有連接
+      if (this.ws && 
+          this.ws.readyState === WebSocket.OPEN && 
+          this.gameState.roomId === roomId && 
+          this.gameState.playerNickname === nickname && 
+          this.gameState.isHost === isHost) {
+        console.log('[WebSocketManager] Reusing existing connection');
+        resolve(this.ws);
+        return;
+      }
+
+      // 如果遊戲正在進行中且嘗試連接到不同房間，拒絕連接
+      if (this.gameState.isGameActive && this.gameState.roomId !== roomId) {
+        console.warn('[WebSocketManager] Cannot connect to different room while game is active');
+        reject(new Error('Game is active in different room'));
+        return;
+      }
+
+      // 關閉現有連接（如果存在）
+      if (this.ws) {
+        this.ws.close();
+      }
+
+      this.gameState.roomId = roomId;
+      this.gameState.playerNickname = nickname;
+      this.gameState.isHost = isHost;
+
+      const wsUrl = `ws://localhost:80/ws?roomId=${roomId}&nickname=${encodeURIComponent(nickname)}&isHost=${isHost}`;
+      this.ws = new WebSocket(wsUrl);
+
+      this.ws.onopen = () => {
+        console.log('[WebSocketManager] Connected to WebSocket');
+        this.reconnectAttempts = 0;
+        
+        // 發送加入消息
+        this.send({
+          type: 'join',
+          payload: {
+            roomId: roomId,
+            nickname: nickname,
+            isHost: isHost
+          }
+        });
+        
+        resolve(this.ws!);
+      };
+
+      this.ws.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          console.log('[WebSocketManager] Received message:', message);
+          
+          // 處理遊戲狀態變化
+          if (message.type === 'gameStarted') {
+            this.gameState.isGameActive = true;
+            console.log('[WebSocketManager] Game started - connection locked');
+          } else if (message.type === 'gameEnded') {
+            this.gameState.isGameActive = false;
+            console.log('[WebSocketManager] Game ended - connection unlocked');
+          }
+          
+          // 分發消息給註冊的處理器
+          this.messageHandlers.forEach((handler, key) => {
+            try {
+              handler(message);
+            } catch (error) {
+              console.error(`[WebSocketManager] Error in message handler ${key}:`, error);
+            }
+          });
+        } catch (error) {
+          console.error('[WebSocketManager] Error parsing message:', error);
+        }
+      };
+
+      this.ws.onclose = (event) => {
+        console.log('[WebSocketManager] WebSocket closed:', event.code, event.reason);
+        
+        // 如果遊戲正在進行中且不是正常關閉，嘗試重連
+        if (this.gameState.isGameActive && event.code !== 1000 && this.reconnectAttempts < this.maxReconnectAttempts) {
+          console.log(`[WebSocketManager] Attempting to reconnect (${this.reconnectAttempts + 1}/${this.maxReconnectAttempts})`);
+          setTimeout(() => {
+            this.reconnectAttempts++;
+            this.connect(roomId, nickname, isHost).catch(console.error);
+          }, this.reconnectDelay * Math.pow(2, this.reconnectAttempts));
+        }
+      };
+
+      this.ws.onerror = (error) => {
+        console.error('[WebSocketManager] WebSocket error:', error);
+        reject(error);
+      };
+    });
+  }
+
+  public send(message: any): boolean {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(message));
+      return true;
+    }
+    console.warn('[WebSocketManager] Cannot send message - WebSocket not connected');
+    return false;
+  }
+
+  public addMessageHandler(key: string, handler: (message: any) => void): void {
+    this.messageHandlers.set(key, handler);
+  }
+
+  public removeMessageHandler(key: string): void {
+    this.messageHandlers.delete(key);
+  }
+
+  public disconnect(): void {
+    // 只有在遊戲未進行時才允許斷開連接
+    if (!this.gameState.isGameActive) {
+      if (this.ws) {
+        this.ws.close(1000, 'Normal closure');
+        this.ws = null;
+      }
+      this.gameState = {
+        isGameActive: false,
+        roomId: null,
+        playerNickname: null,
+        isHost: false
+      };
+      this.messageHandlers.clear();
+      console.log('[WebSocketManager] Disconnected');
+    } else {
+      console.warn('[WebSocketManager] Cannot disconnect while game is active');
+    }
+  }
+
+  public forceDisconnect(): void {
+    // 強制斷開連接（遊戲結束時使用）
+    if (this.ws) {
+      this.ws.close(1000, 'Game ended');
+      this.ws = null;
+    }
+    this.gameState = {
+      isGameActive: false,
+      roomId: null,
+      playerNickname: null,
+      isHost: false
+    };
+    this.messageHandlers.clear();
+    console.log('[WebSocketManager] Force disconnected');
+  }
+
+  public isConnected(): boolean {
+    return this.ws !== null && this.ws.readyState === WebSocket.OPEN;
+  }
+
+  public isGameActive(): boolean {
+    return this.gameState.isGameActive;
+  }
+
+  public getGameState(): GameState {
+    return { ...this.gameState };
+  }
+
+  public setGameActive(active: boolean): void {
+    this.gameState.isGameActive = active;
+    console.log(`[WebSocketManager] Game active state set to: ${active}`);
+  }
+}
+
+export default WebSocketManager;
