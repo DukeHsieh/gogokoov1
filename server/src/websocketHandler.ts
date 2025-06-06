@@ -22,7 +22,8 @@ export function handleWebSocketConnection(ws: WebSocket, request: any): void {
         nickname,
         roomId,
         isHost: false, // Will be set properly below
-        score: 0
+        score: 0,
+        gameFinished: false
     };
 
     // Handle reconnection or new connection

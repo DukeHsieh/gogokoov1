@@ -29,6 +29,10 @@ export function handleMessage(client: Client, room: Room, msg: any): void {
             handleHostCloseGame(client, room);
             break;
             
+        case 'gameOver':
+            handleGameOver(client, room, msg);
+            break;
+            
         default:
             console.log(`[WEBSOCKET] Unhandled message type: ${msg.type} from ${client.nickname}`);
     }
@@ -124,6 +128,86 @@ function handleFlipCard(client: Client, room: Room, msg: any): void {
     } else {
         console.log(`[GAME ${room.id}] Invalid score received for player ${client.nickname}: ${msg.score}`);
     }
+}
+
+/**
+ * Handle game over message from player
+ * @param client The client who finished the game
+ * @param room The room the client is in
+ * @param msg The message containing game completion data
+ */
+function handleGameOver(client: Client, room: Room, msg: any): void {
+    if (!room.gameStarted || room.gameEnded) {
+        console.log(`[GAME ${room.id}] Game over message received but game not active`);
+        return;
+    }
+    
+    console.log(`[GAME ${room.id}] Player ${client.nickname} completed the game with score ${client.score}`);
+    
+    // Mark player as finished
+    client.gameFinished = true;
+    
+    // Check if all players have finished or if this player found all pairs
+    const allPlayersFinished = Array.from(room.clients.values())
+        .filter(c => !c.isHost)
+        .every(c => c.gameFinished);
+    
+    if (msg.allPairsFound || allPlayersFinished) {
+        // End the game and send final results
+        endGameWithResults(room);
+    } else {
+        // Send updated player list to show who finished
+        sendPlayerListUpdate(room, broadcastToRoom);
+    }
+}
+
+/**
+ * End game and send final results to all players
+ * @param room The room to end the game for
+ */
+function endGameWithResults(room: Room): void {
+    if (room.gameEnded) return;
+    
+    console.log(`[GAME ${room.id}] Ending game and calculating final results`);
+    
+    // Calculate final rankings
+    const players = Array.from(room.clients.values())
+        .filter(client => !client.isHost)
+        .map(client => ({
+            nickname: client.nickname,
+            score: client.score || 0,
+            finished: client.gameFinished || false
+        }))
+        .sort((a, b) => {
+            // Sort by score (descending), then by finished status
+            if (a.score !== b.score) return b.score - a.score;
+            if (a.finished !== b.finished) return a.finished ? -1 : 1;
+            return 0;
+        });
+    
+    // Add rank to each player
+    const finalResults = players.map((player, index) => ({
+        ...player,
+        rank: index + 1,
+        totalPlayers: players.length
+    }));
+    
+    // End the game
+    room.gameStarted = false;
+    room.gameEnded = true;
+    if (room.timer) {
+        clearTimeout(room.timer);
+        room.timer = null;
+    }
+    
+    // Send final results to all players
+    broadcastToRoom(room, {
+        type: 'gameEnded',
+        reason: 'Game completed',
+        finalResults: finalResults
+    });
+    
+    console.log(`[GAME ${room.id}] Final results sent:`, finalResults);
 }
 
 /**

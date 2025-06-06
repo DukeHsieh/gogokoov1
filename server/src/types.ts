@@ -13,6 +13,7 @@ export interface Client {
     roomId: string;
     isHost: boolean;
     score: number;
+    gameFinished: boolean;
 }
 
 export interface Room {

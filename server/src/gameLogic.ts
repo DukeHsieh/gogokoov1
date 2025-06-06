@@ -55,13 +55,44 @@ export function endGame(
     if (!room.gameStarted || room.gameEnded) return; // Prevent multiple endGame calls
 
     console.log(`[GAME ${room.id}] Ending game. Reason: ${reason}`);
+    
+    // Calculate final rankings
+    const players = Array.from(room.clients.values())
+        .filter(client => !client.isHost)
+        .map(client => ({
+            nickname: client.nickname,
+            score: client.score || 0,
+            finished: client.gameFinished || false
+        }))
+        .sort((a, b) => {
+            // Sort by score (descending), then by finished status
+            if (a.score !== b.score) return b.score - a.score;
+            if (a.finished !== b.finished) return a.finished ? -1 : 1;
+            return 0;
+        });
+    
+    // Add rank to each player
+    const finalResults = players.map((player, index) => ({
+        ...player,
+        rank: index + 1,
+        totalPlayers: players.length
+    }));
+    
     room.gameStarted = false;
     room.gameEnded = true;
     if (room.timer) {
         clearTimeout(room.timer);
         room.timer = null;
     }
-    broadcastToRoom(room, { type: 'gameEnded', reason });
+    
+    // Send final results to all players
+    broadcastToRoom(room, { 
+        type: 'gameEnded', 
+        reason,
+        finalResults: finalResults
+    });
+    
+    console.log(`[GAME ${room.id}] Final results sent:`, finalResults);
     sendPlayerListUpdate(room, broadcastToRoom);
     // Optionally, reset room state for a new game or close connections
     // For now, we'll just mark it as ended. Players might want to see final scores.

@@ -76,6 +76,11 @@ const GamePage: React.FC = () => {
 
   const [storedGameSettings, setStoredGameSettings] = useState<any>(null);
   
+  // Determine the actual nickname to use
+  const actualNickname = (!playerNickname || playerNickname === 'Player') 
+    ? localStorage.getItem(`player_${roomId}`) || `Player_${Date.now()}`
+    : playerNickname;
+  
   // 從 localStorage 讀取遊戲設定
   useEffect(() => {
     if (roomId) {
@@ -212,11 +217,6 @@ const GamePage: React.FC = () => {
 
     const wsManager = WebSocketManager.getInstance();
     
-    // Determine the actual nickname to use
-    const actualNickname = (!playerNickname || playerNickname === 'Player') 
-      ? localStorage.getItem(`player_${roomId}`) || `Player_${Date.now()}`
-      : playerNickname;
-    
     // Connect or reuse existing connection
     wsManager.connect(roomId, actualNickname, isHost)
       .then(() => {
@@ -250,7 +250,28 @@ const GamePage: React.FC = () => {
             setGameState(prev => ({ ...prev, score: message.score }));
           }
           if (message.type === 'gameEnded') {
-            setGameState(prev => ({ ...prev, status: 'ended' }));
+            console.log('Game ended message received:', message);
+            
+            // 如果服務器發送了最終結果，使用服務器的數據
+            if (message.finalResults) {
+              const currentPlayerResult = message.finalResults.find(
+                (result: any) => result.nickname === actualNickname
+              );
+              
+              if (currentPlayerResult) {
+                setGameState(prev => ({
+                  ...prev,
+                  status: 'ended',
+                  score: currentPlayerResult.score,
+                  rank: currentPlayerResult.rank,
+                  totalPlayers: currentPlayerResult.totalPlayers
+                }));
+              } else {
+                setGameState(prev => ({ ...prev, status: 'ended' }));
+              }
+            } else {
+              setGameState(prev => ({ ...prev, status: 'ended' }));
+            }
           }
           if (message.type === 'timeLeft') {
             setGameState(prev => ({ ...prev, timeLeft: message.timeLeft }));
@@ -347,8 +368,15 @@ const GamePage: React.FC = () => {
       soundEffects.gameOver();
       setGameState(prev => ({ ...prev, status: 'ended' }));
       const wsManager = WebSocketManager.getInstance();
-      const message = { type: 'gameOver', roomId, nickname: playerNickname };
+      const message = { 
+        type: 'gameOver', 
+        roomId, 
+        nickname: actualNickname || playerNickname,
+        allPairsFound: false,
+        finalScore: gameState.score
+      };
       wsManager.send(message);
+      console.log('Sent gameOver message to server (time up):', message);
     }
     if (gameState.timeLeft > 0 && gameState.status === 'playing') {
       const timer = setTimeout(() => {
@@ -405,10 +433,12 @@ const GamePage: React.FC = () => {
             const message = { 
               type: 'gameOver', 
               roomId, 
-              nickname: playerNickname, 
-              allPairsFound: true 
+              nickname: actualNickname || playerNickname, 
+              allPairsFound: true,
+              finalScore: newScore
             };
             wsManager.send(message);
+            console.log('Sent gameOver message to server:', message);
             return { ...prev, cards, score: newScore, status: 'ended' };
           }
 
