@@ -65,7 +65,7 @@ interface GameState {
 }
 
 const GamePage: React.FC = () => {
-  const { roomID } = useParams<{ roomID: string }>();
+  const { roomId } = useParams<{ roomId: string }>();
   const location = useLocation();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const gameStateFromLocation = location.state as any;
@@ -78,15 +78,15 @@ const GamePage: React.FC = () => {
   
   // 從 localStorage 讀取遊戲設定
   useEffect(() => {
-    if (roomID) {
-      const storedSettings = localStorage.getItem(`game_${roomID}`);
+    if (roomId) {
+      const storedSettings = localStorage.getItem(`game_${roomId}`);
       if (storedSettings) {
         const settings = JSON.parse(storedSettings);
         setStoredGameSettings(settings);
         console.log('[GamePage] Loaded game settings from localStorage:', settings);
       }
     }
-  }, [roomID]);
+  }, [roomId]);
   
   // 計算實際的遊戲時間
   const getActualGameDuration = useCallback(() => {
@@ -196,29 +196,29 @@ const GamePage: React.FC = () => {
   }, [generateCards]);
 
   useEffect(() => {
-    if (!roomID) {
-      console.error('Missing roomID');
+    if (!roomId) {
+      console.error('Missing roomId');
       return;
     }
     
     if (!playerNickname || playerNickname === 'Player') {
       console.warn('Missing or default playerNickname, using fallback');
       // If we don't have a proper nickname, try to get it from localStorage or use a default
-      const fallbackNickname = localStorage.getItem(`player_${roomID}`) || `Player_${Date.now()}`;
+      const fallbackNickname = localStorage.getItem(`player_${roomId}`) || `Player_${Date.now()}`;
       console.log('Using fallback nickname:', fallbackNickname);
       // Store the fallback nickname for future use
-      localStorage.setItem(`player_${roomID}`, fallbackNickname);
+      localStorage.setItem(`player_${roomId}`, fallbackNickname);
     }
 
     const wsManager = WebSocketManager.getInstance();
     
     // Determine the actual nickname to use
     const actualNickname = (!playerNickname || playerNickname === 'Player') 
-      ? localStorage.getItem(`player_${roomID}`) || `Player_${Date.now()}`
+      ? localStorage.getItem(`player_${roomId}`) || `Player_${Date.now()}`
       : playerNickname;
     
     // Connect or reuse existing connection
-    wsManager.connect(roomID, actualNickname, isHost)
+    wsManager.connect(roomId, actualNickname, isHost)
       .then(() => {
         console.log('WebSocket connection established in GamePage');
         
@@ -313,7 +313,7 @@ const GamePage: React.FC = () => {
       // Don't disconnect during game - let WebSocketManager handle this
       console.log('GamePage component unmounting, message handler removed');
     };
-  }, [roomID, gameSettings, playerNickname, isHost, waitingForGameData, generateCards, gameState.score, initializeGameWithData]);
+  }, [roomId, gameSettings, playerNickname, isHost, waitingForGameData, generateCards, gameState.score, initializeGameWithData]);
 
   // Listen for gameDataReceived event from GameRoom
   useEffect(() => {
@@ -347,7 +347,7 @@ const GamePage: React.FC = () => {
       soundEffects.gameOver();
       setGameState(prev => ({ ...prev, status: 'ended' }));
       const wsManager = WebSocketManager.getInstance();
-      const message = { type: 'gameOver', roomID, nickname: playerNickname };
+      const message = { type: 'gameOver', roomId, nickname: playerNickname };
       wsManager.send(message);
     }
     if (gameState.timeLeft > 0 && gameState.status === 'playing') {
@@ -356,7 +356,7 @@ const GamePage: React.FC = () => {
       }, 1000);
       return () => clearTimeout(timer);
     }
-  }, [gameState.timeLeft, gameState.status, roomID, playerNickname]);
+  }, [gameState.timeLeft, gameState.status, roomId, playerNickname]);
 
   // 處理卡牌點擊
   const handleCardClick = (cardId: number) => {
@@ -388,7 +388,7 @@ const GamePage: React.FC = () => {
           const wsManager = WebSocketManager.getInstance();
           const message = { 
             type: 'flipCard', 
-            roomID, 
+            roomId, 
             nickname: playerNickname, 
             score: newScore, 
             cardValue: clickedCard.value, 
@@ -404,7 +404,7 @@ const GamePage: React.FC = () => {
             const wsManager = WebSocketManager.getInstance();
             const message = { 
               type: 'gameOver', 
-              roomID, 
+              roomId, 
               nickname: playerNickname, 
               allPairsFound: true 
             };
@@ -467,7 +467,7 @@ const GamePage: React.FC = () => {
               justifyContent: 'space-between',
               alignItems: 'center',
             }}>
-              <span>記憶卡牌遊戲 - 房間 {roomID}</span>
+              <span>記憶卡牌遊戲 - 房間 {roomId}</span>
               <Box sx={{ display: 'flex', gap: 2 }}>
                 <Typography variant="h6" color="secondary">
                   分數: {gameState.score}
