@@ -119,34 +119,44 @@ const GamePage: React.FC = () => {
 
   // 生成卡牌
   const generateCards = useCallback((count: number): GameCard[] => {
-    const cardImages: string[] = [];
-    
     // 定義撲克牌圖片檔名
     const suits = ['spade', 'heart', 'diamond', 'club'];
     const values = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'jack', 'queen', 'king'];
     
-    // 生成撲克牌圖片路徑
+    // 生成所有可能的撲克牌圖片路徑
+    const allCardImages: string[] = [];
     for (const suit of suits) {
       for (const value of values) {
-        if (cardImages.length < count) {
-          const imagePath = `/assets/images/cards/${suit}_${value}.png`;
-          cardImages.push(imagePath);
-          cardImages.push(imagePath); // 每張牌有兩張用於配對
-        }
+        const imagePath = `/assets/images/cards/${suit}_${value}.png`;
+        allCardImages.push(imagePath);
       }
     }
     
-    // 如果需要更多卡牌，重複使用
-    while (cardImages.length < count) {
-      const randomIndex = Math.floor(Math.random() * (cardImages.length / 2)) * 2;
-      cardImages.push(cardImages[randomIndex]);
-      cardImages.push(cardImages[randomIndex]);
+    // 打亂所有卡牌
+    for (let i = allCardImages.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [allCardImages[i], allCardImages[j]] = [allCardImages[j], allCardImages[i]];
     }
     
-    // 只取需要的數量
+    // 計算需要多少對卡牌
+    const pairsNeeded = Math.ceil(count / 2);
+    // 從打亂的卡牌中選擇所需數量的卡牌
+    const selectedUniqueCards = allCardImages.slice(0, pairsNeeded);
+    
+    // 為每張卡牌創建一對
+    const cardImages: string[] = [];
+    for (const card of selectedUniqueCards) {
+      cardImages.push(card);
+      cardImages.push(card); // 每張牌有兩張用於配對
+    }
+    
+    // 如果需要奇數張卡牌，移除最後一張
+    if (count % 2 !== 0 && cardImages.length > count) {
+      cardImages.pop();
+    }
+    
+    // 再次打亂卡牌
     const selectedCards = cardImages.slice(0, count);
-
-    // 洗牌
     for (let i = selectedCards.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [selectedCards[i], selectedCards[j]] = [selectedCards[j], selectedCards[i]];
