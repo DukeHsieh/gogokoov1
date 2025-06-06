@@ -448,7 +448,7 @@ const HostGameMonitor: React.FC = () => {
                 <CardContent sx={{ textAlign: 'center' }}>
                   <People sx={{ fontSize: 40, color: 'success.main', mb: 1 }} />
                   <Typography variant="h4" component="div">
-                    {gameStats.playersCount}
+                    {sortedPlayers.length}
                   </Typography>
                   <Typography color="text.secondary">
                     參與玩家
