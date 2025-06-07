@@ -6,7 +6,7 @@ import type { GameCard } from '../types';
 
 interface CardGridProps {
   cards: GameCard[];
-  onCardClick: (suit: string, value: string) => void;
+  onCardClick: (positionId: number, suit: string, value: string) => void;
   disabled?: boolean;
   selectedCards?: { suit: string; value: string; positionId: number }[];
   localFlippedCards?: { suit: string; value: string; positionId: number }[]; // 本地翻轉的卡片列表

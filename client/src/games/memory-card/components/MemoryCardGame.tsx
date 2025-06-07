@@ -143,8 +143,9 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
   };
 
   // 處理卡片點擊
-  const handleCardClick = (suit: string, value: string) => {
+  const handleCardClick = (positionId: number, suit: string, value: string) => {
     console.log(`[MemoryCardGame] [${new Date().toISOString()}] Card clicked:`, {
+      positionId: positionId,
       suit: suit,
       value: value,
       gameStatus: gameState.status,
@@ -159,6 +160,7 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
     if (gameState.status !== 'playing') {
       console.warn(`[MemoryCardGame] [${new Date().toISOString()}] Game not in playing state, ignoring card click:`, {
         currentStatus: gameState.status,
+        positionId: positionId,
         suit: suit,
         value: value,
         playerNickname: actualNickname
@@ -169,6 +171,7 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
     // 如果正在處理中，忽略點選
     if (isProcessing) {
       console.warn(`[MemoryCardGame] [${new Date().toISOString()}] Currently processing, ignoring card click:`, {
+        positionId: positionId,
         suit: suit,
         value: value,
         playerNickname: actualNickname
@@ -176,12 +179,27 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
       return;
     }
 
-    const card = gameState.cards.find(c => c.suit === suit && c.value === value && c.positionId !== undefined);
+    // 直接使用 positionId 查找卡牌，確保精確匹配
+    const card = gameState.cards.find(c => c.positionId === positionId);
     if (!card) {
-      console.error(`[MemoryCardGame] [${new Date().toISOString()}] Card not found:`, {
+      console.error(`[MemoryCardGame] [${new Date().toISOString()}] Card not found with positionId:`, {
+        positionId: positionId,
         suit: suit,
         value: value,
         availableCards: gameState.cards.map(c => ({ suit: c.suit, value: c.value, positionId: c.positionId })),
+        playerNickname: actualNickname
+      });
+      return;
+    }
+    
+    // 驗證客戶端傳來的 suit/value 與 positionId 對應的卡牌是否一致
+    if (card.suit !== suit || card.value !== value) {
+      console.error(`[MemoryCardGame] [${new Date().toISOString()}] Card data mismatch:`, {
+        positionId: positionId,
+        expectedSuit: card.suit,
+        expectedValue: card.value,
+        receivedSuit: suit,
+        receivedValue: value,
         playerNickname: actualNickname
       });
       return;
@@ -204,13 +222,14 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
       return;
     }
 
-    // 檢查是否已經選擇過這張卡片（使用positionId精確匹配）
-    if (selectedCards.some(sc => sc.positionId === card.positionId)) {
-      console.warn(`[MemoryCardGame] [${new Date().toISOString()}] Card already selected, ignoring click:`, {
+    // 檢查是否已經被選中（使用 positionId 作為主要識別）
+    const isAlreadySelected = selectedCards.some(selected => selected.positionId === positionId);
+    
+    if (isAlreadySelected) {
+      console.warn(`[MemoryCardGame] [${new Date().toISOString()}] Card already selected:`, {
+        positionId: positionId,
         suit: suit,
         value: value,
-        positionId: card.positionId,
-        selectedCards: selectedCards,
         playerNickname: actualNickname
       });
       return;
@@ -227,29 +246,40 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
       return;
     }
 
-    const newSelectedCards = [...selectedCards, { suit, value, positionId: card.positionId }];
+    // 添加到選中列表
+    const newSelectedCard = { suit: suit, value: value, positionId: positionId };
+    const newSelectedCards = [...selectedCards, newSelectedCard];
     setSelectedCards(newSelectedCards);
-    
-    // 立即翻轉卡片（本地動畫效果，使用positionId精確控制）
-    setLocalFlippedCards(prev => [...prev, { suit, value, positionId: card.positionId }]);
+
+    // 立即觸發本地翻轉動畫（使用 positionId 作為主要識別）
+    setLocalFlippedCards(prev => {
+      const isAlreadyFlipped = prev.some(flipped => flipped.positionId === positionId);
+      if (!isAlreadyFlipped) {
+        return [...prev, { suit: suit, value: value, positionId: positionId }];
+      }
+      return prev;
+    });
 
     console.log(`[MemoryCardGame] [${new Date().toISOString()}] Card selected locally and flipped:`, {
       cardSuit: card.suit,
       cardValue: card.value,
-      selectedCards: newSelectedCards,
-      localFlippedCards: [...localFlippedCards, { suit, value, positionId: card.positionId }],
+      cardPositionId: positionId,
+      selectedCardsCount: newSelectedCards.length,
       playerNickname: actualNickname
     });
 
-    // 如果選擇了兩張卡片，發送到服務器
+    // 發送單張卡片點擊事件到伺服器（使用 positionId）
+    sendCardClick(suit, value, positionId);
+
+    // 如果選擇了兩張卡片，發送到伺服器
     if (newSelectedCards.length === 2) {
-      setIsProcessing(true);
-      console.log(`[MemoryCardGame] [${new Date().toISOString()}] Sending two cards to server:`, {
-        selectedCards: newSelectedCards,
-        playerNickname: actualNickname,
-        roomId: roomId
+      console.log(`[MemoryCardGame] [${new Date().toISOString()}] Two cards selected, sending to server:`, {
+        cards: newSelectedCards,
+        playerNickname: actualNickname
       });
-      sendTwoCards(newSelectedCards);
+      
+      setIsProcessing(true);
+      sendTwoCardsClick(newSelectedCards);
     }
   };
 

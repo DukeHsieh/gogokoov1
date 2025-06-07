@@ -5,7 +5,7 @@ import type { GameCard } from '../types';
 
 interface MemoryCardProps {
   card: GameCard;
-  onClick: (suit: string, value: string) => void;
+  onClick: (positionId: number, suit: string, value: string) => void;
   disabled?: boolean;
   isSelected?: boolean;
   isLocalFlipped?: boolean; // 本地翻轉狀態（用於動畫效果）
@@ -20,7 +20,7 @@ export const MemoryCard: React.FC<MemoryCardProps> = ({
 }) => {
   const handleClick = () => {
     if (!disabled && !card.isFlipped && !card.isMatched) {
-      onClick(card.suit, card.value);
+      onClick(card.positionId, card.suit, card.value);
     }
   };
 

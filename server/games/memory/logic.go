@@ -432,13 +432,23 @@ func HandleTwoCardsClick(gameRoom *core.Room, client *core.Client, suit1, value1
 		return
 	}
 
+	// Validate that the provided suit/value matches the card found by positionId
+	card1 := &gameData.Cards[card1Index]
+	card2 := &gameData.Cards[card2Index]
+	
+	if card1.Suit != suit1 || card1.Value != value1 {
+		log.Printf("Card data mismatch for position %d: expected %s %s, got %s %s", positionId1, card1.Suit, card1.Value, suit1, value1)
+		return
+	}
+	if card2.Suit != suit2 || card2.Value != value2 {
+		log.Printf("Card data mismatch for position %d: expected %s %s, got %s %s", positionId2, card2.Suit, card2.Value, suit2, value2)
+		return
+	}
+
 	if card1Index == card2Index {
 		log.Printf("Cannot select the same card twice: %s %s (pos %d)", suit1, value1, positionId1)
 		return
 	}
-
-	card1 := &gameData.Cards[card1Index]
-	card2 := &gameData.Cards[card2Index]
 
 	// Check if there are already flipped cards that need to be processed
 	flippedCount := 0

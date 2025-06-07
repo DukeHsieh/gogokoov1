@@ -309,10 +309,11 @@ export const useWebSocketHandler = ({
   }, [roomId, playerNickname, isHost]); // Remove callback functions from dependencies to prevent reconnections
 
   // 發送卡片點擊消息
-  const sendCardClick = (suit: string, value: string) => {
+  const sendCardClick = (suit: string, value: string, positionId: number) => {
     console.log(`[MemoryCardGame] [${new Date().toISOString()}] Sending card click:`, {
       suit: suit,
       value: value,
+      positionId: positionId,
       playerNickname: playerNickname,
       roomId: roomId,
       isConnected: isConnectedRef.current,
@@ -324,7 +325,8 @@ export const useWebSocketHandler = ({
         type: 'cardClick',
         data: {
           suit,
-          value
+          value,
+          positionId
         }
       };
       console.log(`[MemoryCardGame] [${new Date().toISOString()}] Sending WebSocket message:`, message);
@@ -335,6 +337,7 @@ export const useWebSocketHandler = ({
         isConnected: isConnectedRef.current,
         suit: suit,
         value: value,
+        positionId: positionId,
         playerNickname: playerNickname
       });
     }
