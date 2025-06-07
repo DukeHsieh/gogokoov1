@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   AppBar,
@@ -15,6 +15,7 @@ import {
   useTheme,
   useMediaQuery,
 } from '@mui/material';
+import logo from '../assets/logo.svg';
 import MenuIcon from '@mui/icons-material/Menu';
 import HomeIcon from '@mui/icons-material/Home';
 import SportsEsportsIcon from '@mui/icons-material/SportsEsports';
@@ -79,9 +80,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1, color: 'text.primary' }}>
-            Gogokoo
-          </Typography>
+          <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center' }}>
+            <img 
+              src={logo} 
+              alt="Gogokoo Logo" 
+              style={{ height: '40px', cursor: 'pointer' }}
+              onClick={() => navigate('/')}
+            />
+          </Box>
           <Button
             color="primary"
             startIcon={<PersonOutlineIcon />}
