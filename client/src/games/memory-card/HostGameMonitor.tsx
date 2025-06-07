@@ -64,6 +64,7 @@ const HostGameMonitor: React.FC = () => {
   
   const [timeLeft, setTimeLeft] = useState<number>(gameSettings?.gameDuration || 60);
   const [gameEnded, setGameEnded] = useState<boolean>(false);
+  const [finalResults, setFinalResults] = useState<any[]>([]);
 
   const [gameStats, setGameStats] = useState<GameStats>({
     totalPairs: gameSettings?.numPairs || 8,
@@ -175,8 +176,12 @@ const HostGameMonitor: React.FC = () => {
               break;
 
             case 'gameEnded':
-              console.log('[HOST MONITOR] Game ended:', message.reason);
+              console.log('[HOST MONITOR] Game ended:', message.reason, 'Final results:', message.finalResults);
               setGameEnded(true);
+              // 保存最終結果用於顯示前三名
+              if (message.finalResults && Array.isArray(message.finalResults)) {
+                setFinalResults(message.finalResults);
+              }
               // 播放遊戲結束音效並停止背景音樂
               soundManager.playSound('gameEnd', 0.7);
               soundManager.stopBackgroundMusic();
@@ -533,6 +538,53 @@ const HostGameMonitor: React.FC = () => {
           </Paper>
         </Grid>
       </Grid>
+
+      {/* 遊戲結束後顯示前三名 */}
+      {gameEnded && finalResults.length > 0 && (
+        <Box sx={{ mb: 4 }}>
+          <Paper sx={{ p: 3 }}>
+            <Typography variant="h5" component="h2" sx={{ mb: 3, textAlign: 'center', color: 'primary.main' }}>
+              🏆 最終排名 - 前三名
+            </Typography>
+            <Grid container spacing={2} justifyContent="center">
+              {finalResults.slice(0, 3).map((player, index) => (
+                <Grid item xs={12} sm={4} key={player.nickname}>
+                  <Card 
+                    sx={{ 
+                      textAlign: 'center',
+                      backgroundColor: index === 0 ? '#FFD700' : 
+                                     index === 1 ? '#C0C0C0' : 
+                                     index === 2 ? '#CD7F32' : 'inherit',
+                      border: '2px solid',
+                      borderColor: index === 0 ? '#FFA500' : 
+                                  index === 1 ? '#A0A0A0' : 
+                                  index === 2 ? '#8B4513' : 'divider'
+                    }}
+                  >
+                    <CardContent>
+                      <Box sx={{ mb: 2 }}>
+                        {index === 0 && <Typography variant="h3">🥇</Typography>}
+                        {index === 1 && <Typography variant="h3">🥈</Typography>}
+                        {index === 2 && <Typography variant="h3">🥉</Typography>}
+                      </Box>
+                      <Avatar avatar={player.avatar || 'cat'} size={64} />
+                      <Typography variant="h6" sx={{ mt: 1, fontWeight: 'bold' }}>
+                        {player.nickname}
+                      </Typography>
+                      <Typography variant="h5" color="primary" sx={{ fontWeight: 'bold' }}>
+                        {player.score} 分
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        第 {player.rank} 名
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+          </Paper>
+        </Box>
+      )}
 
       {/* 遊戲結束後的操作按鈕 */}
       {gameEnded && (

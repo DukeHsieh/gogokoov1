@@ -82,7 +82,20 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
         playerNickname: actualNickname
       });
       updateGameStatus('ended');
-      updateRank(data.rank, data.totalPlayers);
+      
+      // 從 finalResults 中找到當前玩家的排名
+      if (data.finalResults && Array.isArray(data.finalResults)) {
+        const currentPlayer = data.finalResults.find((player: any) => player.nickname === actualNickname);
+        if (currentPlayer) {
+          updateRank(currentPlayer.rank, data.finalResults.length);
+        } else {
+          // 如果沒找到當前玩家，使用傳統方式
+          updateRank(data.rank || 1, data.totalPlayers || 1);
+        }
+      } else {
+        // 如果沒有 finalResults，使用傳統方式
+        updateRank(data.rank || 1, data.totalPlayers || 1);
+      }
     },
     onRankUpdate: (data: any) => {
       console.log(`[MemoryCardGame] [${new Date().toISOString()}] Rank updated:`, {
@@ -93,6 +106,7 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
         currentRank: gameState.rank
       });
       updateGameStatus('ended');
+      updateRank(data.rank, data.totalPlayers);
     },
     onScoreUpdate: (score: number) => {
       console.log(`[MemoryCardGame] [${new Date().toISOString()}] Received score update from server:`, {
@@ -388,20 +402,7 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Box display="flex" flexDirection="column" gap={3}>
-        {/* 遊戲結束時顯示結果 */}
-        {isGameEnded && (
-          <Box display="flex" flexDirection="column" alignItems="center" gap={2} sx={{ mb: 2 }}>
-            <Typography variant="h4" component="h1" gutterBottom>
-              遊戲結束！
-            </Typography>
-            <Typography variant="h6">
-              你的排名：第 {gameState.rank} 名 / 共 {gameState.totalPlayers} 人
-            </Typography>
-            <Typography variant="h6">
-              最終得分：{gameState.score} 分
-            </Typography>
-          </Box>
-        )}
+
         
         <GameStatus gameState={gameState} playerNickname={actualNickname} playerAvatar={playerAvatar} />
         
