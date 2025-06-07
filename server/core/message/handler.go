@@ -33,7 +33,7 @@ func HandleMessage(client *core.Client, room *core.Room, msgData []byte) {
 	case "hostStartGame":
 		// Delegate to memory game handler with game settings
 		memory.HandleHostStartGame(room, client, msg)
-	case "cardClick", "flipCard", "twoCardsClick":
+	case "cardClick", "flipCard", "twoCardsClick", "scoreUpdate":
 		// Convert message to core.Message format
 		coreMsg := core.Message{
 			Type: msgType,

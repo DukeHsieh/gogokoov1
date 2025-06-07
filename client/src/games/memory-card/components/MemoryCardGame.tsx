@@ -40,7 +40,7 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
   });
 
   // 遊戲狀態管理
-  const { gameState, setGameState, initializeGame, updateGameStatus, updateRank } = useGameState({
+  const { gameState, setGameState, initializeGame, updateGameStatus, updateRank, updateScore } = useGameState({
     roomId,
     gameSettings,
     initialTimeLeft: gameSettings?.duration ? gameSettings.duration * 60 : 60
@@ -91,6 +91,16 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
         currentRank: gameState.rank
       });
       updateGameStatus('ended');
+    },
+    onScoreUpdate: (score: number) => {
+      console.log(`[MemoryCardGame] [${new Date().toISOString()}] Received score update from server:`, {
+        newScore: score,
+        currentScore: gameState.score,
+        playerNickname: actualNickname,
+        roomId: roomId
+      });
+      // 更新本地分数状态
+      updateScore(score);
     }
   });
 
