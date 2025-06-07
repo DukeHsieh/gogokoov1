@@ -40,7 +40,7 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
   });
 
   // 遊戲狀態管理
-  const { gameState, initializeGame, updateGameStatus, updateRank } = useGameState({
+  const { gameState, setGameState, initializeGame, updateGameStatus, updateRank } = useGameState({
     roomId,
     gameSettings,
     initialTimeLeft: gameSettings?.duration ? gameSettings.duration * 60 : 60
@@ -53,7 +53,7 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
   const [localFlippedCards, setLocalFlippedCards] = useState<{ suit: string; value: string; positionId: number }[]>([]);
 
   // WebSocket 消息處理
-  const { sendCardClick, sendTwoCardsClick, isConnected } = useWebSocketHandler({
+  const { sendScoreUpdate, isConnected } = useWebSocketHandler({
     roomId,
     playerNickname: actualNickname,
     isHost,
@@ -72,42 +72,6 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
     onGameStarted: () => {
       console.log('[MemoryCardGame] Game started, waiting for game data...');
       setWaitingForGameData(true);
-    },
-    onCardFlipped: (suit: string, value: string, positionId?: number) => {
-      console.log(`[MemoryCardGame] [${new Date().toISOString()}] Server confirmed card flipped:`, {
-        suit: suit,
-        value: value,
-        positionId: positionId,
-        roomId: roomId,
-        playerNickname: actualNickname
-      });
-      // 服務器確認卡片翻轉，保持翻轉狀態
-    },
-    onCardsFlippedBack: (cards: { suit: string; value: string }[]) => {
-      console.log(`[MemoryCardGame] [${new Date().toISOString()}] Cards flipped back:`, {
-        cards: cards,
-        roomId: roomId,
-        playerNickname: actualNickname
-      });
-      // 移除本地翻轉狀態，讓卡片翻轉回背面（使用suit和value匹配，因為服務器返回的是suit和value）
-      setLocalFlippedCards(prev => prev.filter(lfc => 
-        !cards.some(c => c.suit === lfc.suit && c.value === lfc.value)
-      ));
-      setSelectedCards([]);
-      setIsProcessing(false);
-    },
-    onCardsMatched: (cards: { suit: string; value: string }[]) => {
-      console.log(`[MemoryCardGame] [${new Date().toISOString()}] Cards matched:`, {
-        cards: cards,
-        roomId: roomId,
-        playerNickname: actualNickname
-      });
-      // 卡片匹配成功，移除本地翻轉狀態（因為服務器會設置isMatched）
-      setLocalFlippedCards(prev => prev.filter(lfc => 
-        !cards.some(c => c.suit === lfc.suit && c.value === lfc.value)
-      ));
-      setSelectedCards([]);
-      setIsProcessing(false);
     },
     onGameEnded: (data: any) => {
       console.log(`[MemoryCardGame] [${new Date().toISOString()}] Game ended:`, {
@@ -130,16 +94,69 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
     }
   });
 
-  // 發送兩張卡片到服務器（包含positionId）
-  const sendTwoCards = (cards: { suit: string; value: string; positionId: number }[]) => {
-    console.log(`[MemoryCardGame] [${new Date().toISOString()}] Sending two cards to server:`, {
-      cards: cards,
+  // 客戶端配對檢查機制
+  const checkForMatch = (cards: { suit: string; value: string; positionId: number }[]) => {
+    if (cards.length !== 2) return;
+    
+    const [card1, card2] = cards;
+    const isMatch = card1.suit === card2.suit && card1.value === card2.value;
+    
+    console.log(`[MemoryCardGame] [${new Date().toISOString()}] Checking for match:`, {
+      card1: card1,
+      card2: card2,
+      isMatch: isMatch,
       playerNickname: actualNickname,
       roomId: roomId
     });
     
-    // 發送完整的卡片信息到服務器，包含positionId
-    sendTwoCardsClick(cards);
+    if (isMatch) {
+      // 配對成功：更新本地遊戲狀態，標記卡片為已配對
+      const updatedCards = gameState.cards.map(card => {
+        if (card.positionId === card1.positionId || card.positionId === card2.positionId) {
+          return { ...card, isMatched: true, isFlipped: true };
+        }
+        return card;
+      });
+      
+      // 更新本地卡片狀態
+       setGameState(prev => ({ ...prev, cards: updatedCards }));
+      
+      // 移除本地翻轉狀態
+      setLocalFlippedCards(prev => prev.filter(lfc => 
+        lfc.positionId !== card1.positionId && lfc.positionId !== card2.positionId
+      ));
+      
+      // 只有非主機玩家才能得分
+      if (!isHost) {
+        const newScore = (gameState.score || 0) + 10;
+        // 發送分數更新到伺服器
+        sendScoreUpdate(newScore);
+      }
+      
+      console.log(`[MemoryCardGame] [${new Date().toISOString()}] Match found! Cards matched locally:`, {
+        card1: card1,
+        card2: card2,
+        newScore: !isHost ? (gameState.score || 0) + 10 : gameState.score,
+        playerNickname: actualNickname
+      });
+    } else {
+      // 配對失敗：2秒後翻轉回背面
+      setTimeout(() => {
+        setLocalFlippedCards(prev => prev.filter(lfc => 
+          lfc.positionId !== card1.positionId && lfc.positionId !== card2.positionId
+        ));
+        
+        console.log(`[MemoryCardGame] [${new Date().toISOString()}] No match, cards flipped back:`, {
+          card1: card1,
+          card2: card2,
+          playerNickname: actualNickname
+        });
+      }, 2000);
+    }
+    
+    // 清除選擇狀態
+    setSelectedCards([]);
+    setIsProcessing(false);
   };
 
   // 處理卡片點擊
@@ -268,18 +285,15 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
       playerNickname: actualNickname
     });
 
-    // 發送單張卡片點擊事件到伺服器（使用 positionId）
-    sendCardClick(suit, value, positionId);
-
-    // 如果選擇了兩張卡片，發送到伺服器
+    // 如果選擇了兩張卡片，進行客戶端配對檢查
     if (newSelectedCards.length === 2) {
-      console.log(`[MemoryCardGame] [${new Date().toISOString()}] Two cards selected, sending to server:`, {
+      console.log(`[MemoryCardGame] [${new Date().toISOString()}] Two cards selected, checking for match:`, {
         cards: newSelectedCards,
         playerNickname: actualNickname
       });
       
       setIsProcessing(true);
-      sendTwoCardsClick(newSelectedCards);
+      checkForMatch(newSelectedCards);
     }
   };
 
