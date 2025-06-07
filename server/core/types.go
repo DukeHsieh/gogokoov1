@@ -15,6 +15,7 @@ type Client struct {
 	RoomID       string          `json:"roomId"`
 	IsHost       bool            `json:"isHost"`
 	Score        int             `json:"score"`
+	Avatar       string          `json:"avatar"`
 	GameFinished bool            `json:"gameFinished"`
 	Mutex        sync.RWMutex    `json:"-"`
 }
@@ -62,6 +63,7 @@ type Player struct {
 	ID       string `json:"id"`
 	IsHost   bool   `json:"isHost"`
 	Score    int    `json:"score"`
+	Avatar   string `json:"avatar"`
 }
 
 // PlayerListResponse represents the response for player list API

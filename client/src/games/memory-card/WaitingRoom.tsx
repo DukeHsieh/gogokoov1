@@ -5,6 +5,7 @@ import {
     Container, Typography, Button, Box, Grid, Paper, List, ListItem, ListItemText, CircularProgress, Alert
 } from '@mui/material';
 import { QRCodeSVG } from 'qrcode.react';
+import Avatar from '../../components/Avatar';
 
 interface Player {
     id: string;
@@ -12,6 +13,7 @@ interface Player {
     score: number;
     rank?: number;
     isHost?: boolean;
+    avatar?: string;
 }
 
 function WaitingRoom() {
@@ -177,18 +179,21 @@ function WaitingRoom() {
                         <List sx={{ width: '100%', maxWidth: 360, bgcolor: 'background.paper', margin: '0 auto' }}>
                             {players.map((player) => (
                                 <ListItem key={player.id}>
-                                    <ListItemText
-                                        primary={
-                                            <>
-                                                {player.nickname}
-                                                {/* Display (你) only if not host and nickname matches */}
-                                                {!isHost && player.nickname === playerNickname && youText}
-                                                {/* Display (房主) if the current client is the host AND this player entry is the host placeholder (if any) */}
-                                                {/* Server now filters out host from player list, so this might not be needed or needs adjustment based on how host is represented if at all */}
-                                                {player.isHost && hostText} {/* This might still be useful if server sends a host placeholder or for local rendering logic */}
-                                            </>
-                                        }
-                                    />
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
+                                        <Avatar avatar={player.avatar || 'cat'} size={40} />
+                                        <ListItemText
+                                            primary={
+                                                <>
+                                                    {player.nickname}
+                                                    {/* Display (你) only if not host and nickname matches */}
+                                                    {!isHost && player.nickname === playerNickname && youText}
+                                                    {/* Display (房主) if the current client is the host AND this player entry is the host placeholder (if any) */}
+                                                    {/* Server now filters out host from player list, so this might not be needed or needs adjustment based on how host is represented if at all */}
+                                                    {player.isHost && hostText} {/* This might still be useful if server sends a host placeholder or for local rendering logic */}
+                                                </>
+                                            }
+                                        />
+                                    </Box>
                                 </ListItem>
                             ))}
                         </List>

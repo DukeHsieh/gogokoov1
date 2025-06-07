@@ -9,6 +9,7 @@ import (
 	"gaming-platform/core"
 	"gaming-platform/platform/room"
 	"gaming-platform/core/message"
+	"gaming-platform/utils"
 )
 
 // WebSocket upgrader
@@ -61,6 +62,7 @@ func HandleWebSocketConnection(w http.ResponseWriter, r *http.Request) {
 		RoomID:   roomID,
 		IsHost:   isHost,
 		Score:    0,
+		Avatar:   utils.GetRandomAvatar(),
 	}
 
 	// Get or create room

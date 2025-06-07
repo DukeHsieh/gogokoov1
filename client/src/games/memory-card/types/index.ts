@@ -35,6 +35,7 @@ export interface Player {
   nickname: string;
   score: number;
   isHost?: boolean;
+  avatar?: string;
 }
 
 export interface GameMessage {

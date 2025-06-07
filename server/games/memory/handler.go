@@ -121,6 +121,7 @@ func getPlayerList(gameRoom *core.Room) []map[string]interface{} {
 			"nickname": client.Nickname,
 			"score":    client.Score,
 			"isHost":   client.IsHost,
+			"avatar":   client.Avatar,
 		}
 		players = append(players, player)
 	}

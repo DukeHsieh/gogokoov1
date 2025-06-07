@@ -6,6 +6,7 @@ import {
 } from '@mui/material';
 import { QRCodeSVG } from 'qrcode.react';
 import { styled } from '@mui/material/styles';
+import Avatar from '../../components/Avatar';
 
 interface Player {
     id: string;
@@ -13,6 +14,7 @@ interface Player {
     score: number;
     rank?: number;
     isHost?: boolean;
+    avatar?: string;
 }
 
 const TopPlayerListItem = styled(ListItem)(({ theme }) => ({
@@ -380,11 +382,17 @@ function GameRoom() {
                                 {players.filter(player => !player.isHost).sort((a, b) => (b.score || 0) - (a.score || 0)).map((player, index) => (
                                 player.nickname === playerNickname ? (
                                     <TopPlayerListItem key={player.id || player.nickname}>
-                                        <ListItemText primary={`${index + 1}. ${player.nickname}${youText}: ${player.score || 0}`} />
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            <Avatar avatar={player.avatar || 'cat'} size={32} />
+                                            <ListItemText primary={`${index + 1}. ${player.nickname}${youText}: ${player.score || 0}`} />
+                                        </Box>
                                     </TopPlayerListItem>
                                 ) : (
                                     <ListItem key={player.id || player.nickname}>
-                                        <ListItemText primary={`${index + 1}. ${player.nickname}: ${player.score || 0}`} />
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            <Avatar avatar={player.avatar || 'cat'} size={32} />
+                                            <ListItemText primary={`${index + 1}. ${player.nickname}: ${player.score || 0}`} />
+                                        </Box>
                                     </ListItem>
                                 )
                             ))}
@@ -417,10 +425,13 @@ function GameRoom() {
                                                 borderRadius: 1,
                                                 mb: 0.5
                                             }}>
-                                                <ListItemText 
-                                                    primary={`${index + 1}. ${p.nickname}${p.nickname === playerNickname ? youText : ''}`}
-                                                    secondary={`得分: ${p.score || 0}`}
-                                                />
+                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+                                                    <Avatar avatar={p.avatar || 'cat'} size={32} />
+                                                    <ListItemText 
+                                                        primary={`${index + 1}. ${p.nickname}${p.nickname === playerNickname ? youText : ''}`}
+                                                        secondary={`得分: ${p.score || 0}`}
+                                                    />
+                                                </Box>
                                             </ListItem>
                                         ))}
                                     </List>
@@ -436,7 +447,10 @@ function GameRoom() {
                                     <List dense>
                                         {players.filter(p => !p.isHost).map((p) => (
                                             <ListItem key={p.id || p.nickname}>
-                                                <ListItemText primary={`${p.nickname}${p.nickname === playerNickname ? youText : ''}`} />
+                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                    <Avatar avatar={p.avatar || 'cat'} size={32} />
+                                                    <ListItemText primary={`${p.nickname}${p.nickname === playerNickname ? youText : ''}`} />
+                                                </Box>
                                             </ListItem>
                                         ))}
                                     </List>

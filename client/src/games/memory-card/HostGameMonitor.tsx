@@ -3,6 +3,7 @@ import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import WebSocketManager from '../../utils/WebSocketManager';
 import SoundManager from '../../utils/SoundManager';
 import API_CONFIG from '../../config/api';
+import Avatar from '../../components/Avatar';
 import {
   Container,
   Typography,
@@ -29,6 +30,7 @@ interface Player {
   matchedPairs: number;
   isConnected: boolean;
   isHost: boolean;
+  avatar?: string;
 }
 
 interface GameStats {
@@ -217,13 +219,18 @@ const HostGameMonitor: React.FC = () => {
   // 處理 WebSocket 接收到的玩家列表更新
   const handlePlayerListUpdate = (data: any) => {
     if (data.players) {
-      const newPlayers = data.players.map((player: any) => ({
-        nickname: player.nickname,
-        score: player.score || 0,
-        matchedPairs: Math.floor((player.score || 0) / 2),
-        isConnected: true,
-        isHost: player.isHost || false
-      }));
+      console.log('[HOST MONITOR] Received player data:', data.players);
+      const newPlayers = data.players.map((player: any) => {
+        console.log('[HOST MONITOR] Player avatar data:', player.nickname, player.avatar);
+        return {
+          nickname: player.nickname,
+          score: player.score || 0,
+          matchedPairs: Math.floor((player.score || 0) / 2),
+          isConnected: true,
+          isHost: player.isHost || false,
+          avatar: player.avatar
+        };
+      });
       
       // 檢測玩家數量變化
       const currentPlayerCount = newPlayers.filter((p: Player) => !p.isHost).length;
@@ -490,9 +497,12 @@ const HostGameMonitor: React.FC = () => {
                           </Box>
                         </TableCell>
                         <TableCell>
-                          <Typography variant="body2" fontWeight={index < 3 ? 'bold' : 'normal'}>
-                            {player.nickname}
-                          </Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Avatar avatar={player.avatar || 'cat'} size={32} />
+                            <Typography variant="body2" fontWeight={index < 3 ? 'bold' : 'normal'}>
+                              {player.nickname}
+                            </Typography>
+                          </Box>
                         </TableCell>
                         <TableCell align="center">
                           <Typography variant="body1" color="primary" fontWeight="bold">
