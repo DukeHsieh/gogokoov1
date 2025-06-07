@@ -1,4 +1,4 @@
-# Gogokoo - Memory Card Game
+# Gogokoo - Multi-Screen Multi-Player Game
 
 A real-time multiplayer memory card game built with React, Express, and WebSocket.
 
