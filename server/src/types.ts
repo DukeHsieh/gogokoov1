@@ -16,6 +16,15 @@ export interface Client {
     gameFinished: boolean;
 }
 
+export interface GameData {
+    cards: Card[];
+    gameTime: number;
+    gameSettings?: {
+        numPairs: number;
+        gameDuration: number;
+    };
+}
+
 export interface Room {
     id: string;
     hostClient: Client | null;
@@ -28,4 +37,6 @@ export interface Room {
     gameStarted: boolean;
     gameEnded: boolean;
     timer: NodeJS.Timeout | null;
+    gameData?: GameData;
+    flippedCards?: number[];
 }

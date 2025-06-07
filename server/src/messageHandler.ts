@@ -21,6 +21,10 @@ export function handleMessage(client: Client, room: Room, msg: any): void {
             handleHostStartGame(client, room, msg);
             break;
             
+        case 'cardClick':
+            handleCardClick(client, room, msg);
+            break;
+            
         case 'flipCard':
             handleFlipCard(client, room, msg);
             break;
@@ -86,10 +90,22 @@ function handleHostStartGame(client: Client, room: Room, msg: any): void {
     }
 
     // Initialize game state
-    room.cards = generateCards(numPairs);
+    const cards = generateCards(numPairs);
+    room.cards = cards;
     room.gameTime = gameTime;
     room.totalPlayers = room.clients.size; // Count non-host players
     room.playersReady = new Map<string, boolean>();
+    
+    // Initialize game data for card click handling
+    room.gameData = {
+        cards: cards,
+        gameTime: gameTime,
+        gameSettings: {
+            numPairs: numPairs,
+            gameDuration: gameTime
+        }
+    };
+    room.flippedCards = [];
 
     room.waitingForPlayers = false;
     room.gameStarted = true;
@@ -109,6 +125,128 @@ function handleHostStartGame(client: Client, room: Room, msg: any): void {
     }, room.gameTime * 1000);
 
     console.log(`[GAME ${room.id}] Game started with ${numPairs} pairs and ${gameTime} seconds.`);
+}
+
+/**
+ * Handle card click message from player
+ * @param client The client clicking the card
+ * @param room The room the client is in
+ * @param msg The message containing card click data
+ */
+function handleCardClick(client: Client, room: Room, msg: any): void {
+    if (!room.gameStarted || room.gameEnded) {
+        console.log(`[GAME ${room.id}] Card click ignored - game not active`);
+        return;
+    }
+
+    const cardId = msg.cardId;
+    if (cardId === undefined || cardId === null) {
+        console.log(`[GAME ${room.id}] Invalid card ID received from ${client.nickname}`);
+        return;
+    }
+
+    // Find the card in room's game data
+    if (!room.gameData || !room.gameData.cards) {
+        console.log(`[GAME ${room.id}] No game data available`);
+        return;
+    }
+
+    const card = room.gameData.cards.find(c => c.id === cardId);
+    if (!card) {
+        console.log(`[GAME ${room.id}] Card with ID ${cardId} not found`);
+        return;
+    }
+
+    // Check if card can be flipped
+    if (card.isFlipped || card.isMatched) {
+        console.log(`[GAME ${room.id}] Card ${cardId} already flipped or matched`);
+        return;
+    }
+
+    // Initialize flipped cards tracking if not exists
+    if (!room.flippedCards) {
+        room.flippedCards = [];
+    }
+
+    // Check if player already has 2 cards flipped
+    if (room.flippedCards.length >= 2) {
+        console.log(`[GAME ${room.id}] Two cards already flipped, ignoring new click`);
+        return;
+    }
+
+    // Flip the card
+    card.isFlipped = true;
+    room.flippedCards.push(cardId);
+    
+    console.log(`[GAME ${room.id}] Player ${client.nickname} flipped card ${cardId}`);
+    
+    // Broadcast card flip to all players
+    broadcastToRoom(room, {
+        type: 'cardFlipped',
+        cardId: cardId,
+        playerNickname: client.nickname
+    });
+
+    // Check if two cards are flipped
+    if (room.flippedCards.length === 2) {
+        const [firstCardId, secondCardId] = room.flippedCards;
+        const firstCard = room.gameData.cards.find(c => c.id === firstCardId);
+        const secondCard = room.gameData.cards.find(c => c.id === secondCardId);
+
+        if (firstCard && secondCard) {
+            // Check if cards match
+            if (firstCard.value === secondCard.value) {
+                // Cards match!
+                firstCard.isMatched = true;
+                secondCard.isMatched = true;
+                
+                // Update player score
+                client.score = (client.score || 0) + 10;
+                
+                console.log(`[GAME ${room.id}] Cards matched! Player ${client.nickname} score: ${client.score}`);
+                
+                // Broadcast match to all players
+                broadcastToRoom(room, {
+                    type: 'cardsMatched',
+                    cardIds: [firstCardId, secondCardId],
+                    playerNickname: client.nickname
+                });
+                
+                // Broadcast score update
+                broadcastToRoom(room, {
+                    type: 'scoreUpdate',
+                    nickname: client.nickname,
+                    score: client.score
+                });
+                
+                // Check if all pairs are found
+                const totalPairs = room.gameData.cards.length / 2;
+                const matchedPairs = room.gameData.cards.filter(c => c.isMatched).length / 2;
+                
+                if (matchedPairs === totalPairs) {
+                    // Game completed!
+                    endGameWithResults(room);
+                }
+            } else {
+                // Cards don't match, flip them back after a delay
+                console.log(`[GAME ${room.id}] Cards don't match, flipping back`);
+                
+                setTimeout(() => {
+                    firstCard.isFlipped = false;
+                    secondCard.isFlipped = false;
+                    
+                    // Broadcast cards flipped back
+                    broadcastToRoom(room, {
+                        type: 'cardsFlippedBack',
+                        cardIds: [firstCardId, secondCardId]
+                    });
+                }, 1500); // 1.5 second delay to show the cards
+            }
+            
+            // Reset flipped cards
+            room.flippedCards = [];
+        }
+    }
 }
 
 /**

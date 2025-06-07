@@ -2,16 +2,12 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import Layout from './components/Layout';
-import Home from './pages/Home';
-import GameList from './pages/GameList';
-import CreateGame from './pages/CreateGame';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import GameRoom from './pages/GameRoom';
-import GamePage from './pages/GamePage'; // Add this line
-import HostGameMonitor from './pages/HostGameMonitor';
-import JoinGame from './pages/JoinGame';
-import WaitingRoom from './pages/WaitingRoom';
+// Platform/System pages
+import { Home, GameList, Login, Register } from './platform';
+
+// Game-related pages
+import { GameRoom, HostGameMonitor, WaitingRoom, CreateGame, JoinGame } from './games';
+import { GamePage } from './games/memory-card';
 
 const theme = createTheme({
   palette: {

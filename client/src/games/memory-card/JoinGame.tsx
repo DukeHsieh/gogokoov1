@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import WebSocketManager from '../utils/WebSocketManager';
+import WebSocketManager from '../../utils/WebSocketManager';
 import {
   Container,
   Typography,
@@ -22,13 +22,17 @@ const JoinGame = () => {
 
   console.log('JoinGame initial isJoining:', isJoining);
 
-  // Cleanup WebSocket connection when component unmounts (only if game is not active)
+  // Cleanup WebSocket connection when component unmounts (only if not navigating to game room)
   useEffect(() => {
     return () => {
       const wsManager = WebSocketManager.getInstance();
-      if (!wsManager.isGameActive()) {
+      // Only disconnect if we're not connected to any room or game is not active
+      // This prevents disconnection when navigating from JoinGame to GameRoom
+      if (!wsManager.isConnected() || (!wsManager.isGameActive() && !wsManager.getGameState().roomId)) {
         console.log('Cleaning up WebSocket connection for JoinGame');
         wsManager.disconnect();
+      } else {
+        console.log('Keeping WebSocket connection for room transition');
       }
     };
   }, []);
@@ -52,25 +56,34 @@ const JoinGame = () => {
       .then((websocket) => {
         console.log('WebSocket connection established in JoinGame');
         ws.current = websocket;
+        setIsJoining(false);
         
-        // Add message handler for this component
-        wsManager.addMessageHandler('joinGame', (message) => {
-          console.log('[WEBSOCKET JoinGame] Message from server: ', message);
-          if (message.type === 'status' && message.status === 'connected') {
-            console.log('[WEBSOCKET JoinGame] Successfully connected and recognized by server.');
+        // Navigate to game page
+        navigate(`/game/${roomId}`, {
+          state: {
+            playerNickname: nickname,
+            isHost: false
           }
         });
-        
-        // Navigate to waiting room after successful connection
-        navigate(`/waitingroom/${roomId}`, { state: { playerNickname: nickname } });
-        setIsJoining(false);
-        console.log('setIsJoining(false) called after navigation');
       })
       .catch((error) => {
-        console.error('[WEBSOCKET JoinGame] WebSocket connection error:', error);
-        setError('無法連接到遊戲伺服器，請稍後再試。');
-        setIsJoining(false);
-        console.log('setIsJoining(false) called on ws error');
+        console.error('Failed to connect:', error);
+        
+        // Handle room conflict error
+        if (error.message === 'Game is active in different room') {
+          console.log('[JoinGame] Resetting game state due to room conflict');
+          wsManager.setGameActive(false);
+          setError('正在重置連接狀態，請重試...');
+          
+          // Retry after resetting
+          setTimeout(() => {
+            setError('');
+            setIsJoining(false);
+          }, 2000);
+        } else {
+          setError('連接失敗，請重試');
+          setIsJoining(false);
+        }
       });
 
   };

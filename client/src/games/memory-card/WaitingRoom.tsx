@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import WebSocketManager from '../utils/WebSocketManager';
+import WebSocketManager from '../../utils/WebSocketManager';
 import {
     Container, Typography, Button, Box, Grid, Paper, List, ListItem, ListItemText, CircularProgress, Alert
 } from '@mui/material';

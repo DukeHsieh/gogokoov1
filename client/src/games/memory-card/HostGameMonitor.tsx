@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import WebSocketManager from '../utils/WebSocketManager';
-import SoundManager from '../utils/SoundManager';
+import WebSocketManager from '../../utils/WebSocketManager';
+import SoundManager from '../../utils/SoundManager';
 import {
   Container,
   Typography,

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import WebSocketManager from '../utils/WebSocketManager';
+import WebSocketManager from '../../utils/WebSocketManager';
 import {
     Container, Typography, Button, TextField, Box, Grid, Paper, List, ListItem, ListItemText, CircularProgress, Alert
 } from '@mui/material';
@@ -48,9 +48,29 @@ function GameRoom() {
     const location = useLocation();
     const navigate = useNavigate();
     const isHostFromState = location.state?.isHost || false;
-    const playerNicknameFromState = isHostFromState ? 'Host' : location.state?.nickname; // Host uses 'Host' as nickname
+    
+    // Get playerNickname from multiple sources with fallback
+    const getPlayerNickname = () => {
+        // First try from navigation state
+        if (location.state?.playerNickname) {
+            return location.state.playerNickname;
+        }
+        if (location.state?.nickname) {
+            return location.state.nickname;
+        }
+        // For hosts, try to get from WebSocketManager or use 'Host' as fallback
+        if (isHostFromState) {
+            const wsManager = WebSocketManager.getInstance();
+            const gameState = wsManager.getGameState();
+            return gameState.playerNickname || 'Host';
+        }
+        // Try to get from WebSocketManager for non-hosts
+        const wsManager = WebSocketManager.getInstance();
+        const gameState = wsManager.getGameState();
+        return gameState.playerNickname || '';
+    };
 
-    const [playerNickname, setPlayerNickname] = useState<string>(playerNicknameFromState || '');
+    const [playerNickname, setPlayerNickname] = useState<string>(getPlayerNickname());
     const [isHost, setIsHost] = useState<boolean>(isHostFromState);
     const [players, setPlayers] = useState<Player[]>([]);
     const [gameStarted, setGameStarted] = useState<boolean>(false);
@@ -66,8 +86,16 @@ function GameRoom() {
     const [gameSettings, setGameSettings] = useState<any>(null);
 
     useEffect(() => {
+        // Try to get playerNickname again if it's missing
+        if (!playerNickname) {
+            const updatedNickname = getPlayerNickname();
+            if (updatedNickname) {
+                setPlayerNickname(updatedNickname);
+            }
+        }
+        
         if (!roomId || !playerNickname) {
-            console.warn('Room ID or Nickname is missing, redirecting appropriately.');
+            console.warn('Room ID or Nickname is missing, redirecting appropriately.', roomId, playerNickname);
             if (!roomId) {
                 // If roomId is missing, redirect to home page
                 navigate('/');
@@ -224,6 +252,25 @@ function GameRoom() {
             .catch((error) => {
                 console.error('[WEBSOCKET] GameRoom connection error:', error);
                 setIsWsConnected(false);
+                
+                // If error is due to active game in different room, reset game state
+                if (error.message === 'Game is active in different room') {
+                    console.log('[GameRoom] Resetting game state due to room conflict');
+                    wsManager.setGameActive(false);
+                    // Retry connection after resetting game state
+                    setTimeout(() => {
+                        wsManager.connect(roomId, playerNickname, isHost)
+                            .then((websocket) => {
+                                console.log('WebSocket reconnected after game state reset');
+                                ws.current = websocket;
+                                setIsWsConnected(true);
+                                setShowQR(isHost);
+                            })
+                            .catch((retryError) => {
+                                console.error('[WEBSOCKET] Retry connection failed:', retryError);
+                            });
+                    }, 1000);
+                }
             });
 
 
@@ -233,7 +280,12 @@ function GameRoom() {
             const wsManager = WebSocketManager.getInstance();
             wsManager.removeMessageHandler('gameRoom');
             
-            // Don't disconnect during game - let WebSocketManager handle this
+            // If game is not actually active (no players or game not started), reset state
+            if (!gameStarted && players.length === 0) {
+                console.log('[GameRoom] Resetting game state on unmount - no active game');
+                wsManager.setGameActive(false);
+            }
+            
             console.log('GameRoom component unmounting, message handler removed');
         };
     }, [roomId, playerNickname, isHost, navigate]);
