@@ -40,10 +40,10 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
   });
 
   // 遊戲狀態管理
-  const { gameState, setGameState, initializeGame, updateGameStatus, updateRank, updateScore } = useGameState({
+  const { gameState, setGameState, initializeGame, updateGameStatus, updateRank, updateScore, updateTimeLeft } = useGameState({
     roomId,
     gameSettings,
-    initialTimeLeft: gameSettings?.duration ? gameSettings.duration * 60 : 60
+    initialTimeLeft: 0 // Server will control time
   });
 
   // 追蹤本地選擇的卡片（使用positionId來精確控制）
@@ -101,6 +101,16 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
       });
       // 更新本地分数状态
       updateScore(score);
+    },
+    onTimeUpdate: (timeLeft: number) => {
+      console.log(`[MemoryCardGame] [${new Date().toISOString()}] Received time update from server:`, {
+        timeLeft: timeLeft,
+        currentTimeLeft: gameState.timeLeft,
+        playerNickname: actualNickname,
+        roomId: roomId
+      });
+      // 更新本地時間狀態
+      updateTimeLeft(timeLeft);
     }
   });
 

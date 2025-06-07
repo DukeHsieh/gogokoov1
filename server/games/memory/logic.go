@@ -156,19 +156,24 @@ func StartMemoryGame(gameRoom *core.Room, numPairs int, gameTime int) {
 		}
 	}
 
-	// Start game timer
+	// Start game timer (countdown from gameTime to 0)
 	gameRoom.Timer = time.NewTicker(1 * time.Second)
 	go func() {
 		for {
 			select {
 			case <-gameRoom.Timer.C:
-				gameRoom.GameTime++
-				// Broadcast time update every 10 seconds
-				if gameRoom.GameTime%10 == 0 {
-					room.BroadcastToRoom(gameRoom, map[string]interface{}{
-						"type": "timeUpdate",
-						"time": gameRoom.GameTime,
-					})
+				gameRoom.GameTime--
+				// Broadcast time update every second
+				room.BroadcastToRoom(gameRoom, map[string]interface{}{
+					"type":     "timeUpdate",
+					"timeLeft": gameRoom.GameTime,
+				})
+				
+				// Check if time is up
+				if gameRoom.GameTime <= 0 {
+					log.Printf("[MEMORY] Time up for room %s, ending game", gameRoom.ID)
+					HandleGameEnd(gameRoom)
+					return
 				}
 			case <-gameRoom.StopChan:
 				gameRoom.Timer.Stop()

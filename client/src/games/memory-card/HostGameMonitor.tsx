@@ -166,6 +166,11 @@ const HostGameMonitor: React.FC = () => {
             case 'timeLeft':
               setTimeLeft(message.timeLeft);
               break;
+              
+            case 'timeUpdate':
+              console.log('[HOST MONITOR] Received time update from server:', message.timeLeft);
+              setTimeLeft(message.timeLeft);
+              break;
 
             case 'gameEnded':
               console.log('[HOST MONITOR] Game ended:', message.reason);
@@ -294,40 +299,26 @@ const HostGameMonitor: React.FC = () => {
     fetchInitialPlayerData();
   }, [roomId, isHost]); // 移除其他依賴，避免重複執行
 
-  // 時間倒數
+  // 處理時間相關音效（由服務端時間更新觸發）
   useEffect(() => {
     if (gameEnded || timeLeft <= 0) return;
 
-    const timer = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          setGameEnded(true);
-          // 時間結束音效並停止背景音樂
-          soundManager.playSound('gameEnd', 0.7);
-          soundManager.stopBackgroundMusic();
-          return 0;
-        }
-        // 倒數時間音效
-        if (prev === 31 && !countdownSoundPlayed.has(30)) {
-          soundManager.playSound('timeWarning', 0.4);
-          setCountdownSoundPlayed(new Set(Array.from(countdownSoundPlayed).concat([30])));
-        } else if (prev === 11 && !countdownSoundPlayed.has(10)) {
-          soundManager.playSound('timeWarning', 0.6);
-          setCountdownSoundPlayed(new Set(Array.from(countdownSoundPlayed).concat([10])));
-        } else if (prev === 6 && !countdownSoundPlayed.has(5)) {
-          // 最後5秒倒數音效
-          soundManager.playSound('timeWarning', 0.8);
-          setCountdownSoundPlayed(new Set(Array.from(countdownSoundPlayed).concat([5])));
-        } else if (prev <= 5 && prev > 1 && !countdownSoundPlayed.has(prev - 1)) {
-          // 每秒倒數音效
-          soundManager.playSound('scoreUpdate', 0.7);
-          setCountdownSoundPlayed(new Set(Array.from(countdownSoundPlayed).concat([prev - 1])));
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
+    // 倒數時間音效
+    if (timeLeft === 30 && !countdownSoundPlayed.has(30)) {
+      soundManager.playSound('timeWarning', 0.4);
+      setCountdownSoundPlayed(new Set(Array.from(countdownSoundPlayed).concat([30])));
+    } else if (timeLeft === 10 && !countdownSoundPlayed.has(10)) {
+      soundManager.playSound('timeWarning', 0.6);
+      setCountdownSoundPlayed(new Set(Array.from(countdownSoundPlayed).concat([10])));
+    } else if (timeLeft === 5 && !countdownSoundPlayed.has(5)) {
+      // 最後5秒倒數音效
+      soundManager.playSound('timeWarning', 0.8);
+      setCountdownSoundPlayed(new Set(Array.from(countdownSoundPlayed).concat([5])));
+    } else if (timeLeft <= 4 && timeLeft > 0 && !countdownSoundPlayed.has(timeLeft)) {
+      // 每秒倒數音效
+      soundManager.playSound('scoreUpdate', 0.7);
+      setCountdownSoundPlayed(new Set(Array.from(countdownSoundPlayed).concat([timeLeft])));
+    }
   }, [timeLeft, gameEnded, countdownSoundPlayed, soundManager]);
 
   // 格式化時間顯示
