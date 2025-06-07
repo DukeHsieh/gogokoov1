@@ -77,26 +77,7 @@ export const MemoryCard: React.FC<MemoryCardProps> = ({
             ? 'rotateY(180deg) scale(1.05)' 
             : 'none',
         },
-        // 添加卡片名稱提示
-        '&::before': {
-          content: `"${cardDisplayName}"`,
-          position: 'absolute',
-          top: '-20px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          fontSize: '10px',
-          color: '#666',
-          backgroundColor: 'rgba(255,255,255,0.9)',
-          padding: '2px 6px',
-          borderRadius: '4px',
-          opacity: 0,
-          transition: 'opacity 0.3s',
-          pointerEvents: 'none',
-          zIndex: 1000
-        },
-        '&:hover::before': {
-          opacity: 1
-        }
+
       }}
       onClick={handleClick}
     >
@@ -145,7 +126,7 @@ export const MemoryCard: React.FC<MemoryCardProps> = ({
             }}
           >
             <img
-              src="/assets/images/cards/back.png"
+              src="/assets/images/cards/back.svg"
               alt="牌背"
               style={{
                 width: '100%',

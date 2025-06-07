@@ -155,11 +155,16 @@ function GameRoom() {
                         // Navigate players based on their role (without game data yet)
                         if (!isHost) {
                             console.log('Non-host player navigating to game page and sending ready confirmation');
+                            // Find current player's avatar from players list
+                            const currentPlayer = players.find(p => p.nickname === playerNickname);
+                            const playerAvatar = currentPlayer?.avatar || 'cat';
+                            
                             navigate(`/game/${roomId}`, {
                                 state: {
                                     playerNickname: playerNickname,
                                     roomId: roomId,
                                     isHost: isHost,
+                                    playerAvatar: playerAvatar,
                                     waitingForGameData: true // Flag to indicate waiting for game data
                                 }
                             });
@@ -174,11 +179,16 @@ function GameRoom() {
                              }, 100); // Small delay to ensure navigation completes
                         } else {
                             console.log('Host navigating to game monitor');
+                            // Find current player's avatar from players list
+                            const currentPlayer = players.find(p => p.nickname === playerNickname);
+                            const playerAvatar = currentPlayer?.avatar || 'cat';
+                            
                             navigate(`/host-monitor/${roomId}`, {
                                 state: {
                                     playerNickname: playerNickname,
                                     roomId: roomId,
                                     isHost: isHost,
+                                    playerAvatar: playerAvatar,
                                     waitingForGameData: true
                                 }
                             });

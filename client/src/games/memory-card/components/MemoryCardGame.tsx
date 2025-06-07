@@ -30,6 +30,7 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
   const actualNickname = propPlayerNickname || (location.state as any)?.playerNickname || localStorage.getItem(`player_${roomId}`) || 'Player';
   const isHost = propIsHost || (location.state as any)?.isHost || false;
   const gameSettings = propGameSettings || (location.state as any)?.gameSettings;
+  const initialAvatar = (location.state as any)?.playerAvatar || 'cat';
 
   console.log(`[MemoryCardGame] [${new Date().toISOString()}] Component initialized:`, {
     roomId: roomId,
@@ -48,7 +49,7 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
 
   // 追蹤本地選擇的卡片（使用positionId來精確控制）
   const [selectedCards, setSelectedCards] = useState<{ suit: string; value: string; positionId: number }[]>([]);
-  const [playerAvatar, setPlayerAvatar] = useState<string>('cat');
+  const [playerAvatar, setPlayerAvatar] = useState<string>(initialAvatar);
   const [isProcessing, setIsProcessing] = useState(false);
   // 追蹤本地翻轉的卡片（用於動畫效果，使用positionId來精確控制）
   const [localFlippedCards, setLocalFlippedCards] = useState<{ suit: string; value: string; positionId: number }[]>([]);

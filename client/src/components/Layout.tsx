@@ -84,7 +84,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <img 
               src={logo} 
               alt="Gogokoo Logo" 
-              style={{ height: '40px', cursor: 'pointer' }}
+              style={{ height: '50px', cursor: 'pointer' }}
               onClick={() => navigate('/')}
             />
           </Box>
