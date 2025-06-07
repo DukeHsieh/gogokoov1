@@ -1,6 +1,6 @@
-# Gogokoo - Multi-Screen Multi-Player Game
+# Gogokoo
 
-A real-time multiplayer memory card game built with React, Express, and WebSocket.
+A real-time multiplayer gaming platform featuring memory card games, built with React frontend and Go backend with WebSocket support.
 
 ## Project Structure
 
@@ -8,20 +8,29 @@ A real-time multiplayer memory card game built with React, Express, and WebSocke
 gogokoo/
 ├── client/                 # React frontend application
 │   ├── src/               # React source code
-│   │   ├── components/    # React components
-│   │   ├── pages/         # Page components
-│   │   ├── utils/         # Utility functions
-│   │   └── ...
-│   ├── public/            # Static assets
-│   ├── build/             # Built client files (generated)
+│   │   ├── components/    # Shared React components
+│   │   ├── games/         # Game-specific components
+│   │   │   └── memory-card/ # Memory card game implementation
+│   │   ├── platform/      # Platform components (rooms, lobbies)
+│   │   ├── config/        # Configuration files
+│   │   └── utils/         # Utility functions
 │   ├── package.json       # Client dependencies
 │   └── tsconfig.json      # Client TypeScript config
-├── server/                # Express backend application
-│   ├── src/               # Server source code
-│   │   └── index.ts       # Main server file
-│   ├── dist/              # Built server files (generated)
-│   ├── package.json       # Server dependencies
-│   └── tsconfig.json      # Server TypeScript config
+├── server/                # Go backend application
+│   ├── core/              # Core server functionality
+│   │   ├── message/       # Message handling
+│   │   ├── websocket/     # WebSocket management
+│   │   └── types.go       # Core type definitions
+│   ├── games/             # Game logic implementations
+│   │   └── memory/        # Memory card game logic
+│   ├── platform/          # Platform services
+│   │   ├── api/           # REST API handlers
+│   │   └── room/          # Room management
+│   ├── utils/             # Utility functions
+│   │   └── avatar.go      # Avatar generation
+│   ├── main.go            # Main server entry point
+│   ├── go.mod             # Go module dependencies
+│   └── Dockerfile         # Docker configuration
 ├── package.json           # Root package.json for orchestration
 ├── README.md
 └── .gitignore
@@ -35,107 +44,149 @@ gogokoo/
    cd gogokoo
    ```
 
-2. **Install all dependencies**
+2. **Install frontend dependencies**
    ```bash
-   npm run install:all
+   npm install --prefix client
    ```
 
-3. **Start development servers**
+3. **Start the Go backend server**
    ```bash
-   npm run dev
-   ```
-   This will start both the React development server and the Express server concurrently.
-
-4. **Open your browser**
-   - Frontend: http://localhost:3000 (React dev server)
-   - Backend API: http://localhost:80 (Express server)
-
-## Available Scripts
-
-### Root Level Commands
-
-- `npm run install:all` - Install dependencies for root, client, and server
-- `npm run dev` - Start both client and server in development mode
-- `npm run build` - Build both client and server for production
-- `npm start` - Start the production server
-- `npm run clean` - Remove all build artifacts
-- `npm test` - Run client tests
-
-### Individual Development
-
-```bash
-# Client only (React dev server on port 3000)
-npm run dev:client
-
-# Server only (Express server with nodemon on port 80)
-npm run dev:server
-```
-
-### Individual Building
-
-```bash
-# Build client only
-npm run build:client
-
-# Build server only
-npm run build:server
-```
-
-## Production Deployment
-
-1. **Build the entire project**
-   ```bash
-   npm run build
+   cd server
+   go run main.go
    ```
 
-2. **Start the production server**
+4. **Start the React development server**
    ```bash
+   cd client
    npm start
    ```
 
-The Express server will serve the built React app and handle API requests on port 80.
+5. **Open your browser**
+   - Frontend: http://localhost:3000 (React dev server)
+   - Backend API: http://localhost:8080 (Go server)
+
+## Available Scripts
+
+### Frontend (Client)
+
+```bash
+cd client
+npm start          # Start React development server
+npm run build      # Build for production
+npm test           # Run tests
+```
+
+### Backend (Server)
+
+```bash
+cd server
+go run main.go     # Start Go development server
+go build           # Build binary for production
+go test ./...      # Run tests
+```
+
+### Root Level Commands
+
+- `npm run dev` - Start Go server (backend only)
+- `npm run dev:client` - Start React development server
+- `npm run build:client` - Build React app for production
+- `npm test` - Run client tests
+
+## Production Deployment
+
+1. **Build the React frontend**
+   ```bash
+   cd client
+   npm run build
+   ```
+
+2. **Build the Go backend**
+   ```bash
+   cd server
+   go build -o gogokoo-server
+   ```
+
+3. **Run the production server**
+   ```bash
+   cd server
+   ./gogokoo-server
+   ```
+
+The Go server serves the built React app and handles API requests and WebSocket connections.
 
 ## Development Workflow
 
 1. **Frontend Development**: Work in `client/src/` directory
-2. **Backend Development**: Work in `server/src/` directory
-3. **Hot Reload**: Both client and server support hot reloading in development mode
-4. **API Testing**: Backend runs on port 80, frontend proxy handles API calls
+   - Game components in `client/src/games/memory-card/`
+   - Platform components in `client/src/platform/`
+   - Shared components in `client/src/components/`
+
+2. **Backend Development**: Work in `server/` directory
+   - Game logic in `server/games/`
+   - API handlers in `server/platform/api/`
+   - WebSocket handling in `server/core/websocket/`
+
+3. **Hot Reload**: Frontend supports hot reloading, backend requires restart
+4. **API Testing**: Backend runs on port 8080, frontend dev server proxies API calls
 
 ## Features
 
 - 🎮 Real-time multiplayer memory card game
 - 🔌 WebSocket communication for instant updates
 - 🏠 Room-based game sessions with unique codes
+- 👤 Random avatar generation with Ghibli characters
 - 📱 Responsive design for mobile and desktop
-- 🎯 TypeScript support throughout the stack
-- 🚀 Optimized production builds
+- 🎯 TypeScript support for frontend
+- 🚀 High-performance Go backend
+- 🎨 Material-UI components with modern design
+- 🔄 Real-time player list updates
+- 📊 Live game statistics and scoring
 
 ## Technology Stack
 
 ### Frontend
 - **React 18** with TypeScript
-- **Material-UI (MUI)** for components
+- **Material-UI (MUI)** for components and theming
 - **React Router** for navigation
+- **Axios** for HTTP requests
+- **QR Code React** for room sharing
 - **WebSocket** for real-time communication
 
 ### Backend
-- **Express.js** with TypeScript
-- **WebSocket (ws)** for real-time features
-- **CORS** for cross-origin requests
-- **Node.js** runtime
+- **Go 1.21** for high-performance server
+- **Gin** web framework for REST API
+- **Gorilla WebSocket** for real-time features
+- **Docker** support for containerization
 
 ### Development Tools
 - **Create React App** for frontend tooling
-- **TypeScript Compiler** for backend builds
-- **Nodemon** for development hot reload
-- **Concurrently** for running multiple processes
+- **Go modules** for dependency management
+- **TypeScript** for frontend type safety
+- **Material-UI** design system
 
 ## Project Architecture
 
-This project follows a monorepo structure with separate client and server applications:
+This project follows a clean architecture with separate frontend and backend:
 
-- **Separation of Concerns**: Frontend and backend are completely separate
+- **Separation of Concerns**: React frontend and Go backend are completely separate
 - **Independent Deployment**: Each part can be deployed independently
-- **Shared Development**: Unified development workflow with npm workspaces
-- **Type Safety**: Full TypeScript support across the stack
+- **Microservices Ready**: Modular backend structure supports scaling
+- **Type Safety**: TypeScript for frontend, Go's strong typing for backend
+- **Real-time Communication**: WebSocket-based architecture for instant updates
+- **Game Engine**: Extensible game system supporting multiple game types
+
+## Game Features
+
+### Memory Card Game
+- **Real-time Multiplayer**: Up to multiple players per room
+- **Live Scoring**: Real-time score updates and rankings
+- **Player Avatars**: Random Ghibli character avatars
+- **Game States**: Waiting, playing, and ended states with smooth transitions
+- **Card Matching**: Classic memory game mechanics with flip animations
+- **Timer System**: Configurable game duration with live countdown
+
+### Platform Features
+- **Room Management**: Create and join rooms with unique codes
+- **Player Management**: Real-time player list with avatars and nicknames
+- **QR Code Sharing**: Easy room sharing via QR codes
+- **Responsive Design**: Works seamlessly on desktop and mobile devices
