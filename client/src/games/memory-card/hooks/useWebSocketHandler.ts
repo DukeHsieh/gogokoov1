@@ -82,16 +82,16 @@ export const useWebSocketHandler = ({
               console.log(`[MemoryCardGame] [${new Date().toISOString()}] Processing gameData:`, {
                 hasGameData: !!message.gameData,
                 gameTime: message.gameData?.gameTime,
-                cardsCount: message.gameData?.cards?.length,
+                hasGameSettings: !!message.gameData?.gameSettings,
                 gameSettings: message.gameData?.gameSettings,
                 fullMessage: message
               });
               
               // 確保server傳來完整的遊戲設定
-              if (!message.gameData?.cards || message.gameData.cards.length === 0) {
+              if (!message.gameData?.gameSettings) {
                 console.error(`[MemoryCardGame] [${new Date().toISOString()}] Incomplete game data from server:`, {
                   gameTime: message.gameData?.gameTime,
-                  cardsLength: message.gameData?.cards?.length,
+                  hasGameSettings: !!message.gameData?.gameSettings,
                   hasGameData: !!message.gameData,
                   fullMessage: message
                 });
@@ -99,11 +99,7 @@ export const useWebSocketHandler = ({
               }
               
               const gameData = {
-                gameSettings: {
-                  numPairs: message.gameData.cards.length / 2,
-                  gameDuration: message.gameData.gameTime
-                },
-                cards: message.gameData.cards,
+                gameSettings: message.gameData.gameSettings,
                 gameTime: message.gameData.gameTime
               };
               console.log(`[MemoryCardGame] [${new Date().toISOString()}] Calling onGameData with:`, gameData);

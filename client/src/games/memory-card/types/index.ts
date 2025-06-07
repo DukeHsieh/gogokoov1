@@ -20,6 +20,7 @@ export interface GameState {
 export interface GameSettings {
   numPairs: number;
   duration: number; // 遊戲時間（分鐘）
+  gameTime?: number; // 遊戲時間（秒）- 從服務端接收
   gameDuration?: number; // 備用欄位
 }
 

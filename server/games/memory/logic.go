@@ -125,14 +125,11 @@ func CalculateScores(gameRoom *core.Room) []PlayerScore {
 
 // StartMemoryGame initializes and starts a memory game
 func StartMemoryGame(gameRoom *core.Room, numPairs int, gameTime int) {
-	log.Printf("[MEMORY] Starting memory game in room %s with %d pairs and %d seconds", gameRoom.ID, numPairs, gameTime)
+	log.Printf("[MEMORY] Starting memory game for room %s with %d pairs", gameRoom.ID, numPairs)
 
-	// Generate cards for the game
-	cards := GenerateCards(numPairs)
-
-	// Initialize game data
+	// Initialize game data without cards (cards will be generated on client side)
 	gameData := GameData{
-		Cards:        cards,
+		Cards:        []Card{}, // Empty cards array
 		GameTime:     gameTime,
 		FlippedCards: []CardRef{},
 	}
@@ -180,17 +177,16 @@ func StartMemoryGame(gameRoom *core.Room, numPairs int, gameTime int) {
 		}
 	}()
 
-	// Create client game data with full card details for game start
+	// Create client game data with only game settings (no cards)
 	clientGameData := map[string]interface{}{
-		"cards": cards,
 		"gameSettings": GameSettings{
-			NumPairs: len(cards) / 2,
-			GameTime: 0, // Will be updated by timer
+			NumPairs: numPairs,
+			GameTime: gameTime,
 		},
-		"gameTime": 0,
+		"gameTime": gameTime,
 	}
 
-	// Broadcast game start to all clients with full game data
+	// Broadcast game start to all clients with game parameters only
 	room.BroadcastToRoom(gameRoom, map[string]interface{}{
 		"type":     "gameStarted",
 		"gameData": clientGameData,
@@ -203,7 +199,7 @@ func StartMemoryGame(gameRoom *core.Room, numPairs int, gameTime int) {
 		"gameData": clientGameData,
 	})
 
-	log.Printf("[MEMORY] Memory game started for room %s with %d cards", gameRoom.ID, len(cards))
+	log.Printf("[MEMORY] Memory game started for room %s with %d pairs and %d seconds", gameRoom.ID, numPairs, gameTime)
 }
 
 // HandleTwoCardsClick processes two cards being clicked simultaneously

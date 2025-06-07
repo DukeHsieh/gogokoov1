@@ -73,7 +73,8 @@ export const useGameState = ({ roomId, gameSettings, initialTimeLeft }: UseGameS
       return;
     }
 
-    const actualGameTime = gameData.gameTime || 0;
+    // Get game time from gameSettings or fallback to gameTime field
+    const actualGameTime = gameData.gameSettings.gameTime || gameData.gameTime || 60;
     const pairCount = gameData.gameSettings.numPairs;
     
     // Generate cards on client side based on pair count
@@ -83,7 +84,9 @@ export const useGameState = ({ roomId, gameSettings, initialTimeLeft }: UseGameS
       actualGameTime: actualGameTime,
       pairCount: pairCount,
       totalCards: generatedCards.length,
-      roomId: roomId
+      roomId: roomId,
+      gameSettingsGameTime: gameData.gameSettings.gameTime,
+      gameDataGameTime: gameData.gameTime
     });
     
     // 儲存遊戲設定到 localStorage
@@ -158,26 +161,7 @@ export const useGameState = ({ roomId, gameSettings, initialTimeLeft }: UseGameS
     });
   }, [roomId]);
 
-  // 更新卡片狀態
-  const updateCards = useCallback((cards: any[]) => {
-    console.log(`[useGameState] [${new Date().toISOString()}] Updating cards:`, {
-      newCardsCount: cards.length,
-      roomId: roomId,
-      cardStates: cards.map(c => ({ id: c.id, isFlipped: c.isFlipped, isMatched: c.isMatched }))
-    });
-    setGameState(prev => {
-      const newState = {
-        ...prev,
-        cards
-      };
-      console.log(`[useGameState] [${new Date().toISOString()}] Cards updated:`, {
-        previousCardsCount: prev.cards.length,
-        newCardsCount: cards.length,
-        roomId: roomId
-      });
-      return newState;
-    });
-  }, [roomId]);
+
 
   // 翻牌
   const flipCard = useCallback((suit: string, value: string) => {

@@ -111,15 +111,15 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
     
     if (isMatch) {
       // 配對成功：更新本地遊戲狀態，標記卡片為已配對
-      const updatedCards = gameState.cards.map(card => {
-        if (card.positionId === card1.positionId || card.positionId === card2.positionId) {
-          return { ...card, isMatched: true, isFlipped: true };
-        }
-        return card;
-      });
-      
-      // 更新本地卡片狀態
-       setGameState(prev => ({ ...prev, cards: updatedCards }));
+      setGameState(prev => ({
+        ...prev,
+        cards: prev.cards.map(card => {
+          if (card.positionId === card1.positionId || card.positionId === card2.positionId) {
+            return { ...card, isMatched: true, isFlipped: true };
+          }
+          return card;
+        })
+      }));
       
       // 移除本地翻轉狀態
       setLocalFlippedCards(prev => prev.filter(lfc => 
@@ -139,12 +139,20 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
         newScore: !isHost ? (gameState.score || 0) + 10 : gameState.score,
         playerNickname: actualNickname
       });
+      
+      // 立即清除選擇和處理狀態
+      setSelectedCards([]);
+      setIsProcessing(false);
     } else {
       // 配對失敗：2秒後翻轉回背面
       setTimeout(() => {
         setLocalFlippedCards(prev => prev.filter(lfc => 
           lfc.positionId !== card1.positionId && lfc.positionId !== card2.positionId
         ));
+        
+        // 清除選擇狀態和處理狀態
+        setSelectedCards([]);
+        setIsProcessing(false);
         
         console.log(`[MemoryCardGame] [${new Date().toISOString()}] No match, cards flipped back:`, {
           card1: card1,
@@ -153,10 +161,6 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
         });
       }, 2000);
     }
-    
-    // 清除選擇狀態
-    setSelectedCards([]);
-    setIsProcessing(false);
   };
 
   // 處理卡片點擊
