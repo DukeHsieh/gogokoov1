@@ -48,6 +48,7 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
 
   // 追蹤本地選擇的卡片（使用positionId來精確控制）
   const [selectedCards, setSelectedCards] = useState<{ suit: string; value: string; positionId: number }[]>([]);
+  const [playerAvatar, setPlayerAvatar] = useState<string>('cat');
   const [isProcessing, setIsProcessing] = useState(false);
   // 追蹤本地翻轉的卡片（用於動畫效果，使用positionId來精確控制）
   const [localFlippedCards, setLocalFlippedCards] = useState<{ suit: string; value: string; positionId: number }[]>([]);
@@ -111,6 +112,17 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
       });
       // 更新本地時間狀態
       updateTimeLeft(timeLeft);
+    },
+    onPlayerListUpdate: (players: any[]) => {
+      // 找到當前玩家並更新頭像
+      const currentPlayer = players.find(p => p.nickname === actualNickname);
+      if (currentPlayer && currentPlayer.avatar) {
+        console.log(`[MemoryCardGame] [${new Date().toISOString()}] Updating player avatar:`, {
+          playerNickname: actualNickname,
+          avatar: currentPlayer.avatar
+        });
+        setPlayerAvatar(currentPlayer.avatar);
+      }
     }
   });
 
@@ -347,8 +359,9 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
     );
   }
 
-  // 遊戲結束狀態
-  if (gameState.status === 'ended') {
+  // 遊戲結束狀態 - 顯示結果但保留撲克牌
+  const isGameEnded = gameState.status === 'ended';
+  if (isGameEnded) {
     console.log(`[MemoryCardGame] [${new Date().toISOString()}] Showing game ended state:`, {
       rank: gameState.rank,
       totalPlayers: gameState.totalPlayers,
@@ -357,21 +370,6 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
       playerNickname: actualNickname,
       gameStatus: gameState.status
     });
-    return (
-      <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Box display="flex" flexDirection="column" alignItems="center" gap={3}>
-          <Typography variant="h4" component="h1" gutterBottom>
-            遊戲結束！
-          </Typography>
-          <Typography variant="h6">
-            你的排名：第 {gameState.rank} 名 / 共 {gameState.totalPlayers} 人
-          </Typography>
-          <Typography variant="h6">
-            最終得分：{gameState.score} 分
-          </Typography>
-        </Box>
-      </Container>
-    );
   }
 
   // 正常遊戲狀態
@@ -389,12 +387,27 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Box display="flex" flexDirection="column" gap={3}>
-        <GameStatus gameState={gameState} />
+        {/* 遊戲結束時顯示結果 */}
+        {isGameEnded && (
+          <Box display="flex" flexDirection="column" alignItems="center" gap={2} sx={{ mb: 2 }}>
+            <Typography variant="h4" component="h1" gutterBottom>
+              遊戲結束！
+            </Typography>
+            <Typography variant="h6">
+              你的排名：第 {gameState.rank} 名 / 共 {gameState.totalPlayers} 人
+            </Typography>
+            <Typography variant="h6">
+              最終得分：{gameState.score} 分
+            </Typography>
+          </Box>
+        )}
+        
+        <GameStatus gameState={gameState} playerNickname={actualNickname} playerAvatar={playerAvatar} />
         
         <CardGrid
            cards={gameState.cards}
            onCardClick={handleCardClick}
-           disabled={(gameState.status as GameState['status']) === 'ended'}
+           disabled={isGameEnded}
            selectedCards={selectedCards}
            localFlippedCards={localFlippedCards}
          />

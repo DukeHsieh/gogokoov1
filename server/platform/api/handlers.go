@@ -41,6 +41,7 @@ func GetPlayerList(c *gin.Context) {
 			ID:       fmt.Sprintf("%p", gameRoom.HostClient.Conn),
 			IsHost:   true,
 			Score:    gameRoom.HostClient.Score,
+			Avatar:   gameRoom.HostClient.Avatar,
 		})
 	}
 
@@ -52,6 +53,7 @@ func GetPlayerList(c *gin.Context) {
 				ID:       fmt.Sprintf("%p", client.Conn),
 				IsHost:   false,
 				Score:    client.Score,
+				Avatar:   client.Avatar,
 			})
 		}
 	}

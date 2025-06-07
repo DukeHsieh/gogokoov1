@@ -215,6 +215,7 @@ func BroadcastPlayerListUpdate(room *core.Room) {
 			ID:       room.HostClient.Nickname, // Use nickname as ID for simplicity
 			IsHost:   true,
 			Score:    room.HostClient.Score,
+			Avatar:   room.HostClient.Avatar,
 		})
 	}
 
@@ -226,6 +227,7 @@ func BroadcastPlayerListUpdate(room *core.Room) {
 				ID:       client.Nickname,
 				IsHost:   false,
 				Score:    client.Score,
+				Avatar:   client.Avatar,
 			})
 		}
 	}

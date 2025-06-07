@@ -16,6 +16,15 @@ var AnimalAvatars = []string{
 	"panda",
 	"lion",
 	"tiger",
+	// Ghibli-style animals
+	"totoro",
+	"calcifer",
+	"jiji",
+	"kodama",
+	"soot-sprite",
+	"catbus",
+	"turnip-head",
+	"heen",
 }
 
 // GetRandomAvatar returns a random animal avatar name
