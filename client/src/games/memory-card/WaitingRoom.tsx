@@ -25,7 +25,7 @@ function WaitingRoom() {
 
     const [players, setPlayers] = useState<Player[]>([]);
     const [isWsConnected, setIsWsConnected] = useState(false);
-    const [showQR, setShowQR] = useState(false);
+
     const [connectionError, setConnectionError] = useState<string | null>(null);
 
     // 更新中文文本
@@ -48,9 +48,10 @@ function WaitingRoom() {
 
         // 確保在組件卸載時關閉 WebSocket 連接
         return () => {
-            if (ws.current) {
+            const currentWs = ws.current;
+            if (currentWs) {
                 console.log('Closing WebSocket connection for WaitingRoom');
-                ws.current.close();
+                currentWs.close();
             }
         };
     }, [roomId]);
@@ -65,7 +66,6 @@ function WaitingRoom() {
             .then(() => {
                 console.log('WebSocket connection established in WaitingRoom');
                 setIsWsConnected(true);
-                setShowQR(isHost);
                 
                 // Add message handler for this component
                 wsManager.addMessageHandler('waitingRoom', (message) => {

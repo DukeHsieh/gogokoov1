@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>撲克牌記憶遊戲測試頁面</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-controls {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .test-window {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .window-header {
+            background: #2196F3;
+            color: white;
+            padding: 15px;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .window-header.host {
+            background: #FF9800;
+        }
+        .window-header.player {
+            background: #4CAF50;
+        }
+        .window-content {
+            padding: 15px;
+            height: 400px;
+            overflow-y: auto;
+        }
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #f44336;
+        }
+        .status-indicator.connected {
+            background: #4CAF50;
+        }
+        .log-entry {
+            margin-bottom: 8px;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        .log-send {
+            background: #E3F2FD;
+            border-left: 4px solid #2196F3;
+        }
+        .log-receive {
+            background: #E8F5E8;
+            border-left: 4px solid #4CAF50;
+        }
+        .log-error {
+            background: #FFEBEE;
+            border-left: 4px solid #f44336;
+        }
+        .log-info {
+            background: #FFF3E0;
+            border-left: 4px solid #FF9800;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        .btn-primary {
+            background: #2196F3;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #1976D2;
+        }
+        .btn-success {
+            background: #4CAF50;
+            color: white;
+        }
+        .btn-success:hover {
+            background: #388E3C;
+        }
+        .btn-warning {
+            background: #FF9800;
+            color: white;
+        }
+        .btn-warning:hover {
+            background: #F57C00;
+        }
+        .btn-danger {
+            background: #f44336;
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #D32F2F;
+        }
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .config-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .config-item {
+            display: flex;
+            flex-direction: column;
+        }
+        .config-item label {
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .config-item input, .config-item select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .log-window {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-top: 20px;
+        }
+        .timestamp {
+            color: #666;
+            font-size: 11px;
+        }
+        .game-info {
+            background: #f9f9f9;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            font-size: 12px;
+        }
+        .player-actions {
+            margin-top: 10px;
+        }
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 5px;
+            margin: 10px 0;
+        }
+        .card {
+            aspect-ratio: 1;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 10px;
+            background: #fff;
+        }
+        .card.flipped {
+            background: #E3F2FD;
+        }
+        .card.matched {
+            background: #E8F5E8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>撲克牌記憶遊戲測試頁面</h1>
+            <p>模擬主持人和玩家的完整遊戲流程測試</p>
+        </div>
+
+        <div class="test-controls">
+            <div class="config-section">
+                <div class="config-item">
+                    <label>服務器地址:</label>
+                    <input type="text" id="serverHost" value="localhost">
+                </div>
+                <div class="config-item">
+                    <label>服務器端口:</label>
+                    <input type="number" id="serverPort" value="8080">
+                </div>
+                <div class="config-item">
+                    <label>房間ID:</label>
+                    <input type="text" id="roomId" value="test-room-001">
+                </div>
+                <div class="config-item">
+                    <label>遊戲時長(秒):</label>
+                    <input type="number" id="gameDuration" value="120">
+                </div>
+                <div class="config-item">
+                    <label>卡片對數:</label>
+                    <input type="number" id="numPairs" value="8">
+                </div>
+                <div class="config-item">
+                    <label>玩家數量:</label>
+                    <input type="number" id="playerCount" value="2" min="1" max="4">
+                </div>
+            </div>
+
+            <div class="controls">
+                <button class="btn btn-primary" onclick="startFullTest()">開始完整測試</button>
+                <button class="btn btn-success" onclick="createGame()">1. 創建遊戲</button>
+                <button class="btn btn-success" onclick="joinPlayers()">2. 玩家加入</button>
+                <button class="btn btn-warning" onclick="startGame()">3. 開始遊戲</button>
+                <button class="btn btn-primary" onclick="simulateGameplay()">4. 模擬遊戲</button>
+                <button class="btn btn-danger" onclick="disconnectAll()">斷開所有連接</button>
+                <button class="btn btn-primary" onclick="clearLogs()">清除日誌</button>
+            </div>
+        </div>
+
+        <div class="test-grid">
+            <div class="test-window">
+                <div class="window-header host">
+                    <span>主持人</span>
+                    <div class="status-indicator" id="hostStatus"></div>
+                </div>
+                <div class="window-content" id="hostContent">
+                    <div class="game-info" id="hostGameInfo">等待連接...</div>
+                    <div class="player-actions">
+                        <button class="btn btn-primary" onclick="hostCreateRoom()" disabled id="hostCreateBtn">創建房間</button>
+                        <button class="btn btn-warning" onclick="hostStartGame()" disabled id="hostStartBtn">開始遊戲</button>
+                        <button class="btn btn-primary" onclick="hostGetRanking()" disabled id="hostRankBtn">獲取排名</button>
+                    </div>
+                    <div id="hostLogs"></div>
+                </div>
+            </div>
+
+            <div class="test-window">
+                <div class="window-header player">
+                    <span>玩家一</span>
+                    <div class="status-indicator" id="player1Status"></div>
+                </div>
+                <div class="window-content" id="player1Content">
+                    <div class="game-info" id="player1GameInfo">等待連接...</div>
+                    <div class="player-actions">
+                        <button class="btn btn-success" onclick="player1Join()" disabled id="player1JoinBtn">加入遊戲</button>
+                        <button class="btn btn-warning" onclick="player1StartGame()" disabled id="player1StartBtn">開始遊戲</button>
+                        <div class="card-grid" id="player1Cards"></div>
+                    </div>
+                    <div id="player1Logs"></div>
+                </div>
+            </div>
+
+            <div class="test-window">
+                <div class="window-header player">
+                    <span>玩家二</span>
+                    <div class="status-indicator" id="player2Status"></div>
+                </div>
+                <div class="window-content" id="player2Content">
+                    <div class="game-info" id="player2GameInfo">等待連接...</div>
+                    <div class="player-actions">
+                        <button class="btn btn-success" onclick="player2Join()" disabled id="player2JoinBtn">加入遊戲</button>
+                        <button class="btn btn-warning" onclick="player2StartGame()" disabled id="player2StartBtn">開始遊戲</button>
+                        <div class="card-grid" id="player2Cards"></div>
+                    </div>
+                    <div id="player2Logs"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="log-window">
+            <div class="window-header">
+                <span>完整通信日誌</span>
+                <button class="btn btn-primary" onclick="exportLogs()">導出日誌</button>
+            </div>
+            <div class="window-content" id="fullLogs"></div>
+        </div>
+    </div>
+
+    <script>
+        // 全局變量
+        let hostWS = null;
+        let player1WS = null;
+        let player2WS = null;
+        let gameState = {
+            roomId: null,
+            gameStarted: false,
+            gameData: null,
+            players: [],
+            rankings: []
+        };
+        let testResults = {
+            passed: 0,
+            failed: 0,
+            tests: []
+        };
+
+        // 日誌函數
+        function addLog(windowId, type, message, data = null) {
+            const timestamp = new Date().toISOString();
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${type}`;
+            
+            // 確定接收者身份
+            let receiverName = '';
+            if (windowId.includes('host')) {
+                receiverName = '主持人';
+            } else if (windowId.includes('player1')) {
+                receiverName = '玩家一';
+            } else if (windowId.includes('player2')) {
+                receiverName = '玩家二';
+            }
+            
+            let content = `<span class="timestamp">[${timestamp}]</span> ${message}`;
+            if (data) {
+                content += `<br><pre style="margin: 5px 0; font-size: 11px;">${JSON.stringify(data, null, 2)}</pre>`;
+            }
+            
+            logEntry.innerHTML = content;
+            
+            // 添加到指定窗口
+            const windowLogs = document.getElementById(windowId);
+            if (windowLogs) {
+                windowLogs.appendChild(logEntry);
+                windowLogs.scrollTop = windowLogs.scrollHeight;
+            }
+            
+            // 添加到完整日誌，標注接收者
+            const fullLogs = document.getElementById('fullLogs');
+            const fullLogEntry = logEntry.cloneNode(true);
+            const actionType = type === 'receive' ? '收到' : type === 'send' ? '發送' : type;
+            fullLogEntry.innerHTML = `<strong>[${receiverName}${actionType}]</strong> ` + content;
+            fullLogs.appendChild(fullLogEntry);
+            fullLogs.scrollTop = fullLogs.scrollHeight;
+        }
+
+        function updateStatus(elementId, connected) {
+            const statusElement = document.getElementById(elementId);
+            if (statusElement) {
+                statusElement.className = `status-indicator ${connected ? 'connected' : ''}`;
+            }
+        }
+
+        function updateGameInfo(elementId, info) {
+            const infoElement = document.getElementById(elementId);
+            if (infoElement) {
+                infoElement.innerHTML = info;
+            }
+        }
+
+        // WebSocket 連接函數
+        function createWebSocket(roomId, nickname, isHost, onMessage, onOpen, onClose, onError) {
+            const host = document.getElementById('serverHost').value;
+            const port = document.getElementById('serverPort').value;
+            const wsUrl = `ws://${host}:${port}/ws?roomId=${roomId}&nickname=${encodeURIComponent(nickname)}&isHost=${isHost}`;
+            
+            const ws = new WebSocket(wsUrl);
+            
+            ws.onopen = (event) => {
+                console.log(`WebSocket connected: ${nickname}`);
+                if (onOpen) onOpen(event);
+            };
+            
+            ws.onmessage = (event) => {
+                try {
+                    const message = JSON.parse(event.data);
+                    if (onMessage) onMessage(message);
+                } catch (error) {
+                    console.error('Failed to parse message:', error);
+                }
+            };
+            
+            ws.onclose = (event) => {
+                console.log(`WebSocket closed: ${nickname}`);
+                if (onClose) onClose(event);
+            };
+            
+            ws.onerror = (error) => {
+                console.error(`WebSocket error: ${nickname}`, error);
+                if (onError) onError(error);
+            };
+            
+            return ws;
+        }
+
+        // 發送消息函數
+        function sendMessage(ws, type, payload, logWindowId) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                const message = { type, ...payload };
+                ws.send(JSON.stringify(message));
+                addLog(logWindowId, 'send', `發送: ${type}`, message);
+                return true;
+            } else {
+                addLog(logWindowId, 'error', `無法發送消息: WebSocket未連接`);
+                return false;
+            }
+        }
+
+        // 主持人功能
+        function hostCreateRoom() {
+            const roomId = document.getElementById('roomId').value;
+            gameState.roomId = roomId;
+            
+            hostWS = createWebSocket(
+                roomId,
+                'Host',
+                true,
+                (message) => {
+                    addLog('hostLogs', 'receive', `接收服務器回傳: ${message.type}`, message);
+                    handleHostMessage(message);
+                },
+                () => {
+                    updateStatus('hostStatus', true);
+                    updateGameInfo('hostGameInfo', `房間已創建: ${roomId}`);
+                    document.getElementById('hostCreateBtn').disabled = true;
+                    document.getElementById('hostStartBtn').disabled = false;
+                    document.getElementById('hostRankBtn').disabled = false;
+                    
+                    // 發送加入消息
+                    sendMessage(hostWS, 'join', {
+                        roomId: roomId,
+                        nickname: 'Host',
+                        isHost: true
+                    }, 'hostLogs');
+                },
+                () => {
+                    updateStatus('hostStatus', false);
+                    updateGameInfo('hostGameInfo', '連接已斷開');
+                },
+                (error) => {
+                    addLog('hostLogs', 'error', '連接錯誤', error);
+                }
+            );
+        }
+
+        function hostStartGame() {
+            const numPairs = parseInt(document.getElementById('numPairs').value);
+            const gameDuration = parseInt(document.getElementById('gameDuration').value);
+            
+            sendMessage(hostWS, 'hostStartGame', {
+                numPairs: numPairs,
+                gameTime: gameDuration
+            }, 'hostLogs');
+        }
+
+        function hostGetRanking() {
+            sendMessage(hostWS, 'getRanking', {}, 'hostLogs');
+        }
+
+        function handleHostMessage(message) {
+            switch (message.type) {
+                case 'playerJoined':
+                    gameState.players.push(message.player);
+                    updateGameInfo('hostGameInfo', `玩家加入: ${message.player.nickname} (總計: ${gameState.players.length})`);
+                    break;
+                case 'gameStarted':
+                    gameState.gameStarted = true;
+                    updateGameInfo('hostGameInfo', '遊戲已開始');
+                    break;
+                case 'gameData':
+                    gameState.gameData = message.gameData;
+                    if (message.gameData && message.gameData.gameSettings) {
+                        const numPairs = message.gameData.gameSettings.numPairs;
+                        updateGameInfo('hostGameInfo', `遊戲數據已接收 (${numPairs}對卡片)`);
+                    } else {
+                        updateGameInfo('hostGameInfo', '接收到無效的遊戲數據');
+                    }
+                    break;
+                case 'rankingUpdate':
+                    gameState.rankings = message.rankings;
+                    updateGameInfo('hostGameInfo', `排名更新: ${message.rankings.length}名玩家`);
+                    break;
+                case 'gameEnded':
+                    updateGameInfo('hostGameInfo', '遊戲結束');
+                    break;
+            }
+        }
+
+        // 玩家功能
+        function player1Join() {
+            joinPlayer('Player1', 'player1Status', 'player1GameInfo', 'player1Logs', 'player1JoinBtn', 'player1Cards', (ws) => {
+                player1WS = ws;
+            });
+        }
+
+        function player2Join() {
+            joinPlayer('Player2', 'player2Status', 'player2GameInfo', 'player2Logs', 'player2JoinBtn', 'player2Cards', (ws) => {
+                player2WS = ws;
+            });
+        }
+
+        function player1StartGame() {
+            if (player1WS && player1WS.readyState === WebSocket.OPEN) {
+                sendMessage(player1WS, 'playerReady', {}, 'player1Logs');
+                document.getElementById('player1StartBtn').disabled = true;
+                updateGameInfo('player1GameInfo', '已準備開始遊戲，等待其他玩家...');
+            }
+        }
+
+        function player2StartGame() {
+            if (player2WS && player2WS.readyState === WebSocket.OPEN) {
+                sendMessage(player2WS, 'playerReady', {}, 'player2Logs');
+                document.getElementById('player2StartBtn').disabled = true;
+                updateGameInfo('player2GameInfo', '已準備開始遊戲，等待其他玩家...');
+            }
+        }
+
+        function joinPlayer(nickname, statusId, infoId, logsId, btnId, cardsId, setWS) {
+            const roomId = document.getElementById('roomId').value;
+            
+            const ws = createWebSocket(
+                roomId,
+                nickname,
+                false,
+                (message) => {
+                    addLog(logsId, 'receive', `接收服務器回傳: ${message.type}`, message);
+                    handlePlayerMessage(message, infoId, cardsId);
+                },
+                () => {
+                    updateStatus(statusId, true);
+                    updateGameInfo(infoId, `已加入房間: ${roomId}`);
+                    document.getElementById(btnId).disabled = true;
+                    
+                    // 啟用開始遊戲按鈕
+                    const startBtnId = btnId.replace('JoinBtn', 'StartBtn');
+                    document.getElementById(startBtnId).disabled = false;
+                    
+                    // 發送加入消息
+                    sendMessage(ws, 'join', {
+                        roomId: roomId,
+                        nickname: nickname,
+                        isHost: false
+                    }, logsId);
+                },
+                () => {
+                    updateStatus(statusId, false);
+                    updateGameInfo(infoId, '連接已斷開');
+                },
+                (error) => {
+                    addLog(logsId, 'error', '連接錯誤', error);
+                }
+            );
+            
+            setWS(ws);
+        }
+
+        function handlePlayerMessage(message, infoId, cardsId) {
+            switch (message.type) {
+                case 'gameStarted':
+                    updateGameInfo(infoId, '遊戲開始，等待遊戲數據...');
+                    break;
+                case 'gameData':
+                    if (message.gameData && message.gameData.gameSettings) {
+                        const numPairs = message.gameData.gameSettings.numPairs;
+                        updateGameInfo(infoId, `遊戲數據已接收 (${numPairs}對卡片)`);
+                        generateAndRenderCards(numPairs * 2, cardsId);
+                    } else {
+                        updateGameInfo(infoId, '接收到無效的遊戲數據');
+                    }
+                    break;
+                case 'cardFlipped':
+                    updateGameInfo(infoId, `卡片翻開: ${message.cardId}`);
+                    updateCard(cardsId, message.cardId, message.value, 'flipped');
+                    break;
+                case 'cardsFlippedBack':
+                    updateGameInfo(infoId, `卡片翻回: ${message.cardIds.join(', ')}`);
+                    message.cardIds.forEach(cardId => {
+                        updateCard(cardsId, cardId, '', 'back');
+                    });
+                    break;
+                case 'cardsMatched':
+                    updateGameInfo(infoId, `卡片配對成功: ${message.cardIds.join(', ')}`);
+                    message.cardIds.forEach(cardId => {
+                        updateCard(cardsId, cardId, '', 'matched');
+                    });
+                    break;
+                case 'scoreUpdate':
+                    updateGameInfo(infoId, `分數更新: ${message.score}`);
+                    break;
+                case 'rankUpdate':
+                    updateGameInfo(infoId, `排名更新: ${message.rank}/${message.totalPlayers}`);
+                    break;
+                case 'gameEnded':
+                    updateGameInfo(infoId, `遊戲結束 - 排名: ${message.rank}`);
+                    break;
+            }
+        }
+
+        function generateAndRenderCards(cardCount, cardsId) {
+            const cardsContainer = document.getElementById(cardsId);
+            cardsContainer.innerHTML = '';
+            
+            // 生成指定數量的卡片
+            for (let i = 1; i <= cardCount; i++) {
+                const cardElement = document.createElement('div');
+                cardElement.className = 'card';
+                cardElement.id = `${cardsId}_card_${i}`;
+                cardElement.textContent = '?';
+                cardElement.onclick = () => clickCard(cardsId, i);
+                cardsContainer.appendChild(cardElement);
+            }
+        }
+
+        function renderCards(cards, cardsId) {
+            const cardsContainer = document.getElementById(cardsId);
+            cardsContainer.innerHTML = '';
+            
+            cards.forEach(card => {
+                const cardElement = document.createElement('div');
+                cardElement.className = 'card';
+                cardElement.id = `${cardsId}_card_${card.id}`;
+                cardElement.textContent = card.isFlipped ? `${card.suit}${card.value}` : '?';
+                cardElement.onclick = () => clickCard(cardsId, card.id);
+                cardsContainer.appendChild(cardElement);
+            });
+        }
+
+        function updateCard(cardsId, cardId, value, state) {
+            const cardElement = document.getElementById(`${cardsId}_card_${cardId}`);
+            if (cardElement) {
+                if (state === 'flipped') {
+                    cardElement.textContent = value;
+                    cardElement.className = 'card flipped';
+                } else if (state === 'matched') {
+                    cardElement.className = 'card matched';
+                } else if (state === 'back') {
+                    cardElement.textContent = '?';
+                    cardElement.className = 'card';
+                }
+            }
+        }
+
+        function clickCard(cardsId, cardId) {
+            let ws, logsId;
+            if (cardsId === 'player1Cards') {
+                ws = player1WS;
+                logsId = 'player1Logs';
+            } else if (cardsId === 'player2Cards') {
+                ws = player2WS;
+                logsId = 'player2Logs';
+            }
+            
+            if (ws) {
+                sendMessage(ws, 'cardClick', { data: { cardId: cardId } }, logsId);
+            }
+        }
+
+        // 測試控制函數
+        function createGame() {
+            addLog('fullLogs', 'info', '開始步驟1: 創建遊戲');
+            hostCreateRoom();
+        }
+
+        function joinPlayers() {
+            addLog('fullLogs', 'info', '開始步驟2: 玩家加入');
+            setTimeout(() => player1Join(), 500);
+            setTimeout(() => player2Join(), 1000);
+        }
+
+        function startGame() {
+            addLog('fullLogs', 'info', '開始步驟3: 開始遊戲');
+            hostStartGame();
+        }
+
+        function simulateGameplay() {
+            addLog('fullLogs', 'info', '開始步驟4: 模擬遊戲');
+            
+            // 模擬玩家點擊卡片
+            let clickCount = 0;
+            const maxClicks = 20;
+            
+            const simulateClick = () => {
+                if (clickCount >= maxClicks) return;
+                
+                const cardId = Math.floor(Math.random() * 16) + 1; // 假設16張卡片
+                const player = Math.random() > 0.5 ? 'player1' : 'player2';
+                
+                if (player === 'player1' && player1WS) {
+                    sendMessage(player1WS, 'cardClick', { cardId: cardId }, 'player1Logs');
+                } else if (player === 'player2' && player2WS) {
+                    sendMessage(player2WS, 'cardClick', { cardId: cardId }, 'player2Logs');
+                }
+                
+                clickCount++;
+                
+                // 隨機間隔繼續點擊
+                setTimeout(simulateClick, Math.random() * 2000 + 500);
+            };
+            
+            setTimeout(simulateClick, 1000);
+            
+            // 定期獲取排名
+            const rankingInterval = setInterval(() => {
+                if (hostWS && gameState.gameStarted) {
+                    hostGetRanking();
+                } else {
+                    clearInterval(rankingInterval);
+                }
+            }, 5000);
+        }
+
+        function startFullTest() {
+            addLog('fullLogs', 'info', '開始完整自動測試流程');
+            
+            createGame();
+            setTimeout(() => joinPlayers(), 2000);
+            setTimeout(() => startGame(), 5000);
+            setTimeout(() => simulateGameplay(), 8000);
+        }
+
+        function disconnectAll() {
+            if (hostWS) {
+                hostWS.close();
+                hostWS = null;
+            }
+            if (player1WS) {
+                player1WS.close();
+                player1WS = null;
+            }
+            if (player2WS) {
+                player2WS.close();
+                player2WS = null;
+            }
+            
+            updateStatus('hostStatus', false);
+            updateStatus('player1Status', false);
+            updateStatus('player2Status', false);
+            
+            // 重置按鈕狀態
+            document.getElementById('hostCreateBtn').disabled = false;
+            document.getElementById('hostStartBtn').disabled = true;
+            document.getElementById('hostRankBtn').disabled = true;
+            document.getElementById('player1JoinBtn').disabled = false;
+            document.getElementById('player2JoinBtn').disabled = false;
+            
+            addLog('fullLogs', 'info', '所有連接已斷開');
+        }
+
+        function clearLogs() {
+            document.getElementById('hostLogs').innerHTML = '';
+            document.getElementById('player1Logs').innerHTML = '';
+            document.getElementById('player2Logs').innerHTML = '';
+            document.getElementById('fullLogs').innerHTML = '';
+        }
+
+        function exportLogs() {
+            const logs = document.getElementById('fullLogs').innerHTML;
+            const blob = new Blob([logs], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `game-test-logs-${new Date().toISOString()}.html`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // 頁面載入時初始化
+        window.onload = function() {
+            addLog('fullLogs', 'info', '測試頁面已載入，準備開始測試');
+        };
+    </script>
+</body>
+</html>

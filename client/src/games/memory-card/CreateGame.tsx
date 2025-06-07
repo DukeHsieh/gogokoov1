@@ -116,6 +116,9 @@ const CreateGame = () => {
         <Typography variant="h4" component="h1" gutterBottom>
           創建新遊戲
         </Typography>
+        <Typography variant="subtitle1" color="text.secondary">
+          設計您的互動遊戲，創造獨特的主持體驗
+        </Typography>
       </Box>
 
       <Paper elevation={3} sx={{ p: 4, borderRadius: 2 }}>

@@ -49,7 +49,7 @@ export const useGameTimer = ({
         intervalRef.current = null;
       }
     };
-  }, [isActive, onTimeUpdate, onTimeUp]);
+  }, [isActive, timeLeft, onTimeUpdate, onTimeUp]);
 
   // 清理計時器
   const clearTimer = () => {

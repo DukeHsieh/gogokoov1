@@ -1,4 +1,6 @@
-interface GameState {
+import API_CONFIG from '../config/api';
+
+interface WebSocketGameState {
   isGameActive: boolean;
   roomId: string | null;
   playerNickname: string | null;
@@ -8,7 +10,7 @@ interface GameState {
 class WebSocketManager {
   private static instance: WebSocketManager;
   private ws: WebSocket | null = null;
-  private gameState: GameState = {
+  private gameState: WebSocketGameState = {
     isGameActive: false,
     roomId: null,
     playerNickname: null,
@@ -18,6 +20,8 @@ class WebSocketManager {
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectDelay = 1000;
+  private processedMessages: Set<string> = new Set();
+  private lastMessageTime: number = 0;
 
   private constructor() {}
 
@@ -57,7 +61,8 @@ class WebSocketManager {
       this.gameState.playerNickname = nickname;
       this.gameState.isHost = isHost;
 
-      const wsUrl = `ws://localhost:80/ws?roomId=${roomId}&nickname=${encodeURIComponent(nickname)}&isHost=${isHost}`;
+      const wsUrl = API_CONFIG.WS_URL(roomId, nickname, isHost);
+      console.log('[WebSocketManager] Connecting to:', wsUrl);
       this.ws = new WebSocket(wsUrl);
 
       this.ws.onopen = () => {
@@ -80,7 +85,28 @@ class WebSocketManager {
       this.ws.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
-          console.log('[WebSocketManager] Received message:', message);
+          
+          // Create message hash for deduplication
+          const messageHash = this.createMessageHash(message);
+          const currentTime = Date.now();
+          
+          // Skip if same message was processed within last 25ms
+          if (this.processedMessages.has(messageHash) && 
+              (currentTime - this.lastMessageTime) < 25) {
+            console.log('[WebSocketManager] Skipping duplicate message:', message.type);
+            return;
+          }
+          
+          // Clean old processed messages (keep only last 100)
+          if (this.processedMessages.size > 100) {
+            const oldMessages = Array.from(this.processedMessages).slice(0, 50);
+            oldMessages.forEach(hash => this.processedMessages.delete(hash));
+          }
+          
+          this.processedMessages.add(messageHash);
+          this.lastMessageTime = currentTime;
+          
+          console.log('[WebSocketManager] Processing message:', message);
           
           // 處理遊戲狀態變化
           if (message.type === 'gameStarted') {
@@ -185,13 +211,29 @@ class WebSocketManager {
     return this.gameState.isGameActive;
   }
 
-  public getGameState(): GameState {
+  public getGameState(): WebSocketGameState {
     return { ...this.gameState };
   }
 
   public setGameActive(active: boolean): void {
     this.gameState.isGameActive = active;
     console.log(`[WebSocketManager] Game active state set to: ${active}`);
+  }
+
+  private createMessageHash(message: any): string {
+    // Create a more specific hash that includes actual content changes
+    const hashData = {
+      type: message.type,
+      timestamp: Math.floor(Date.now() / 50), // Shorter window for deduplication
+      // Include actual data content for playerListUpdate messages
+      playersData: message.type === 'playerListUpdate' ? 
+        (message.data && Array.isArray(message.data) ? message.data.map((p: any) => p.nickname).sort().join(',') : '') : '',
+      playersCount: message.data && Array.isArray(message.data) ? message.data.length : 0,
+      gameStarted: message.gameStarted,
+      gameEnded: message.gameEnded,
+      waitingForPlayers: message.waitingForPlayers
+    };
+    return JSON.stringify(hashData);
   }
 }
 

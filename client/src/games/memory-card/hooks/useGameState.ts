@@ -33,7 +33,7 @@ export const useGameState = ({ roomId, gameSettings, initialTimeLeft }: UseGameS
   }, [storedGameSettings, initialTimeLeft, gameSettings?.duration]);
 
   const [gameState, setGameState] = useState<GameState>({
-    status: 'playing',
+    status: 'waiting',
     timeLeft: initialTimeLeft || 60,
     cards: [],
     score: 0,
@@ -54,85 +54,283 @@ export const useGameState = ({ roomId, gameSettings, initialTimeLeft }: UseGameS
   }, [storedGameSettings]);
 
   // 初始化遊戲數據
-  const initializeGameWithData = useCallback((gameData: GameData) => {
-    console.log('Initializing game with data:', gameData);
+  const initializeGame = useCallback((gameData: GameData) => {
+    console.log(`[useGameState] [${new Date().toISOString()}] Initializing game with data:`, {
+      gameData: gameData,
+      roomId: roomId,
+      hasGameTime: !!gameData.gameTime,
+      hasCards: !!gameData.cards,
+      cardsLength: gameData.cards?.length || 0
+    });
     
-    // 優先使用server傳來的設定，不使用預設值
-    if (!gameData.gameSettings?.numPairs || !gameData.gameTime) {
-      console.error('[useGameState] Missing required game settings from server:', gameData);
+    if (!gameData.gameSettings || !gameData.gameSettings.numPairs) {
+      console.error(`[useGameState] [${new Date().toISOString()}] Missing required game settings from server:`, {
+        gameData: gameData,
+        roomId: roomId,
+        missingGameSettings: !gameData.gameSettings,
+        missingNumPairs: !gameData.gameSettings?.numPairs
+      });
       return;
     }
-    
+
+    const actualGameTime = gameData.gameTime || 0;
     const pairCount = gameData.gameSettings.numPairs;
-    const newCards = gameData.cards || generateCards(pairCount * 2);
     
-    // 優先使用server傳來的遊戲時間，不使用localStorage或預設值
-    const actualGameTime = gameData.gameTime || gameData.gameSettings.gameDuration || 60;
+    // Generate cards on client side based on pair count
+    const generatedCards = generateCards(pairCount * 2);
     
-    setGameState(prev => ({
-      ...prev,
-      cards: newCards,
-      timeLeft: actualGameTime,
-      status: 'playing' as const
-    }));
+    console.log(`[useGameState] [${new Date().toISOString()}] Processing game initialization:`, {
+      actualGameTime: actualGameTime,
+      pairCount: pairCount,
+      totalCards: generatedCards.length,
+      roomId: roomId
+    });
     
-    console.log('[useGameState] Initialized game with server settings - time:', actualGameTime, 'pairs:', pairCount);
-  }, [generateCards]);
+    // 儲存遊戲設定到 localStorage
+    if (roomId) {
+      const settingsToStore = {
+        duration: actualGameTime / 60, // 秒轉分鐘
+        pairs: pairCount
+      };
+      localStorage.setItem(`game_${roomId}`, JSON.stringify(settingsToStore));
+      console.log(`[useGameState] [${new Date().toISOString()}] Stored game settings to localStorage:`, {
+        roomId: roomId,
+        settingsToStore: settingsToStore
+      });
+    }
+
+    setGameState(prev => {
+      const newState = {
+        ...prev,
+        cards: generatedCards,
+        timeLeft: actualGameTime,
+        status: 'playing' as GameState['status']
+      };
+      console.log(`[useGameState] [${new Date().toISOString()}] Updated game state:`, {
+        previousState: prev,
+        newState: newState,
+        roomId: roomId
+      });
+      return newState;
+    });
+    
+    console.log(`[useGameState] [${new Date().toISOString()}] Game initialization completed:`, {
+      actualGameTime: actualGameTime,
+      pairCount: pairCount,
+      roomId: roomId
+    });
+  }, [roomId]);
 
   // 更新分數
   const updateScore = useCallback((score: number) => {
-    setGameState(prev => ({ ...prev, score }));
-  }, []);
+    console.log(`[useGameState] [${new Date().toISOString()}] Updating score:`, {
+      newScore: score,
+      roomId: roomId
+    });
+    setGameState(prev => {
+      const newState = { ...prev, score };
+      console.log(`[useGameState] [${new Date().toISOString()}] Score updated:`, {
+        previousScore: prev.score,
+        newScore: score,
+        roomId: roomId
+      });
+      return newState;
+    });
+  }, [roomId]);
 
   // 更新排名
   const updateRank = useCallback((rank: number, totalPlayers: number) => {
-    setGameState(prev => ({ ...prev, rank, totalPlayers }));
-  }, []);
+    console.log(`[useGameState] [${new Date().toISOString()}] Updating rank:`, {
+      newRank: rank,
+      totalPlayers: totalPlayers,
+      roomId: roomId
+    });
+    setGameState(prev => {
+      const newState = { ...prev, rank, totalPlayers };
+      console.log(`[useGameState] [${new Date().toISOString()}] Rank updated:`, {
+        previousRank: prev.rank,
+        previousTotalPlayers: prev.totalPlayers,
+        newRank: rank,
+        newTotalPlayers: totalPlayers,
+        roomId: roomId
+      });
+      return newState;
+    });
+  }, [roomId]);
+
+  // 更新卡片狀態
+  const updateCards = useCallback((cards: any[]) => {
+    console.log(`[useGameState] [${new Date().toISOString()}] Updating cards:`, {
+      newCardsCount: cards.length,
+      roomId: roomId,
+      cardStates: cards.map(c => ({ id: c.id, isFlipped: c.isFlipped, isMatched: c.isMatched }))
+    });
+    setGameState(prev => {
+      const newState = {
+        ...prev,
+        cards
+      };
+      console.log(`[useGameState] [${new Date().toISOString()}] Cards updated:`, {
+        previousCardsCount: prev.cards.length,
+        newCardsCount: cards.length,
+        roomId: roomId
+      });
+      return newState;
+    });
+  }, [roomId]);
 
   // 翻牌
-  const flipCard = useCallback((cardId: number) => {
-    setGameState(prev => ({
-      ...prev,
-      cards: prev.cards.map(card => 
-        card.id === cardId ? { ...card, isFlipped: true } : card
-      )
-    }));
-  }, []);
+  const flipCard = useCallback((suit: string, value: string) => {
+    console.log(`[useGameState] [${new Date().toISOString()}] Flipping card:`, {
+      suit: suit,
+      value: value,
+      roomId: roomId
+    });
+    setGameState(prev => {
+      const currentCard = prev.cards.find(card => card.suit === suit && card.value === value);
+      if (currentCard) {
+        console.log(`[useGameState] [${new Date().toISOString()}] Card found:`, {
+          suit: suit,
+          value: value,
+          roomId: roomId
+        });
+      }
+      
+      const newState = {
+        ...prev,
+        cards: prev.cards.map(card => {
+          if (card.suit === suit && card.value === value) {
+            const updatedCard = { 
+              ...card, 
+              isFlipped: true
+            };
+            console.log(`[useGameState] [${new Date().toISOString()}] Card updated:`, {
+              suit: suit,
+              value: value,
+              isFlipped: updatedCard.isFlipped,
+              roomId: roomId
+            });
+            return updatedCard;
+          }
+          return card;
+        })
+      };
+      
+      console.log(`[useGameState] [${new Date().toISOString()}] Card flipped:`, {
+        suit: suit,
+        value: value,
+        roomId: roomId,
+        flippedCardsCount: newState.cards.filter(c => c.isFlipped).length,
+        totalCards: newState.cards.length
+      });
+      return newState;
+    });
+  }, [roomId]);
 
   // 翻回卡片
-  const flipCardsBack = useCallback((cardIds: number[]) => {
-    setGameState(prev => ({
-      ...prev,
-      cards: prev.cards.map(card => 
-        cardIds.includes(card.id) ? { ...card, isFlipped: false } : card
-      )
-    }));
-  }, []);
+  const flipCardsBack = useCallback((cards: { suit: string; value: string }[]) => {
+    console.log(`[useGameState] [${new Date().toISOString()}] Flipping cards back:`, {
+      cards: cards,
+      roomId: roomId
+    });
+    setGameState(prev => {
+      // 記錄被翻回的卡片信息
+      const cardsToFlipBack = prev.cards.filter(card => 
+        cards.some(c => c.suit === card.suit && c.value === card.value)
+      );
+      console.log(`[useGameState] [${new Date().toISOString()}] Cards being flipped back details:`, {
+        cards: cards,
+        cardValues: cardsToFlipBack.map(card => ({ suit: card.suit, value: card.value })),
+        roomId: roomId
+      });
+      
+      const newState = {
+        ...prev,
+        cards: prev.cards.map(card => 
+          cards.some(c => c.suit === card.suit && c.value === card.value) ? { ...card, isFlipped: false } : card
+        )
+      };
+      console.log(`[useGameState] [${new Date().toISOString()}] Cards flipped back:`, {
+        cards: cards,
+        roomId: roomId,
+        flippedCardsCount: newState.cards.filter(c => c.isFlipped).length,
+        totalCards: newState.cards.length
+      });
+      return newState;
+    });
+  }, [roomId]);
 
-  // 標記配對成功
-  const markCardsAsMatched = useCallback((cardIds: number[]) => {
-    setGameState(prev => ({
-      ...prev,
-      cards: prev.cards.map(card => 
-        cardIds.includes(card.id) ? { ...card, isMatched: true } : card
-      )
-    }));
-  }, []);
+  // 標記卡片為已匹配
+  const markCardsAsMatched = useCallback((cards: { suit: string; value: string }[]) => {
+    console.log(`[useGameState] [${new Date().toISOString()}] Marking cards as matched:`, {
+      cards: cards,
+      roomId: roomId
+    });
+    setGameState(prev => {
+      // 記錄被標記為匹配的卡片信息
+      const cardsToMatch = prev.cards.filter(card => 
+        cards.some(c => c.suit === card.suit && c.value === card.value)
+      );
+      console.log(`[useGameState] [${new Date().toISOString()}] Cards being marked as matched details:`, {
+        cards: cards,
+        cardValues: cardsToMatch.map(card => ({ suit: card.suit, value: card.value })),
+        roomId: roomId
+      });
+      
+      const newState = {
+        ...prev,
+        cards: prev.cards.map(card => 
+          cards.some(c => c.suit === card.suit && c.value === card.value) ? { ...card, isMatched: true, isFlipped: true } : card
+        )
+      };
+      console.log(`[useGameState] [${new Date().toISOString()}] Cards marked as matched:`, {
+        cards: cards,
+        roomId: roomId,
+        matchedCardsCount: newState.cards.filter(c => c.isMatched).length,
+        totalCards: newState.cards.length,
+        gameProgress: `${newState.cards.filter(c => c.isMatched).length}/${newState.cards.length} cards matched`
+      });
+      return newState;
+    });
+  }, [roomId]);
 
   // 更新遊戲狀態
   const updateGameStatus = useCallback((status: GameState['status']) => {
-    setGameState(prev => ({ ...prev, status }));
-  }, []);
+    console.log(`[useGameState] [${new Date().toISOString()}] Updating game status:`, {
+      newStatus: status,
+      roomId: roomId
+    });
+    setGameState(prev => {
+      const newState = { ...prev, status };
+      console.log(`[useGameState] [${new Date().toISOString()}] Game status updated:`, {
+        previousStatus: prev.status,
+        newStatus: status,
+        roomId: roomId
+      });
+      return newState;
+    });
+  }, [roomId]);
 
   // 更新剩餘時間
   const updateTimeLeft = useCallback((timeLeft: number) => {
-    setGameState(prev => ({ ...prev, timeLeft }));
-  }, []);
+    setGameState(prev => {
+      const newState = { ...prev, timeLeft };
+      // 只在時間變化較大時記錄日誌，避免過多的日誌
+      if (Math.abs(prev.timeLeft - timeLeft) > 5 || timeLeft <= 10) {
+        console.log(`[useGameState] [${new Date().toISOString()}] Time updated:`, {
+          previousTime: prev.timeLeft,
+          newTime: timeLeft,
+          roomId: roomId
+        });
+      }
+      return newState;
+    });
+  }, [roomId]);
 
   return {
     gameState,
     setGameState,
-    initializeGameWithData,
+    initializeGame,
     updateScore,
     updateRank,
     flipCard,

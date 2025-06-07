@@ -1,8 +1,9 @@
 // 卡片記憶遊戲相關類型定義
 
 export interface GameCard {
-  id: number;
-  value: string;
+  positionId: number; // 卡片位置ID，用於本地翻轉效果和位置追蹤
+  suit: 'heart' | 'diamond' | 'club' | 'spade'; // 花色
+  value: string; // 點數: A, 2-10, J, Q, K
   isFlipped: boolean;
   isMatched: boolean;
 }

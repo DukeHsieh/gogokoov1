@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import WebSocketManager from '../../utils/WebSocketManager';
 import SoundManager from '../../utils/SoundManager';
+import API_CONFIG from '../../config/api';
 import {
   Container,
   Typography,
@@ -13,16 +14,14 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  LinearProgress,
   Chip,
   Grid,
   Card,
   CardContent,
   Button,
-  CircularProgress,
   IconButton
 } from '@mui/material';
-import { Timer, EmojiEvents, People, PlayArrow, VolumeUp, VolumeOff } from '@mui/icons-material';
+import { Timer, People, VolumeUp, VolumeOff } from '@mui/icons-material';
 
 interface Player {
   nickname: string;
@@ -46,8 +45,6 @@ const HostGameMonitor: React.FC = () => {
   const gameSettings = gameState?.gameSettings;
   const playerNickname = gameState?.playerNickname || 'Host';
   const isHost = gameState?.isHost || false;
-  const waitingForGameData = gameState?.waitingForGameData || false;
-
   const [players, setPlayers] = useState<Player[]>([]);
   const [storedGameSettings, setStoredGameSettings] = useState<any>(null);
   
@@ -65,7 +62,7 @@ const HostGameMonitor: React.FC = () => {
   
   const [timeLeft, setTimeLeft] = useState<number>(gameSettings?.gameDuration || 60);
   const [gameEnded, setGameEnded] = useState<boolean>(false);
-  const [gameDataReceived, setGameDataReceived] = useState(true);
+
   const [gameStats, setGameStats] = useState<GameStats>({
     totalPairs: gameSettings?.numPairs || 8,
     gameTime: gameSettings?.gameDuration || 60,
@@ -91,7 +88,7 @@ const HostGameMonitor: React.FC = () => {
       });
     }
   }, [storedGameSettings]);
-  const [ws, setWs] = useState<WebSocket | null>(null);
+
   const wsRef = useRef<WebSocket | null>(null);
   const soundManager = SoundManager.getInstance();
   const [previousPlayerCount, setPreviousPlayerCount] = useState<number>(0);
@@ -146,7 +143,6 @@ const HostGameMonitor: React.FC = () => {
       .then((websocket) => {
         console.log('[HOST MONITOR] WebSocket connection established');
         wsRef.current = websocket;
-        setWs(websocket);
         
         // Add message handler for this component
         wsManager.addMessageHandler('hostGameMonitor', (message) => {
@@ -162,7 +158,6 @@ const HostGameMonitor: React.FC = () => {
               };
               setGameStats(newGameStats);
               setTimeLeft(message.gameTime || 60);
-              setGameDataReceived(true);
               // 播放遊戲開始音效和背景音樂
               soundManager.playSound('gameStart', 0.6);
               soundManager.playBackgroundMusic();
@@ -178,6 +173,18 @@ const HostGameMonitor: React.FC = () => {
               // 播放遊戲結束音效並停止背景音樂
               soundManager.playSound('gameEnd', 0.7);
               soundManager.stopBackgroundMusic();
+              break;
+
+            case 'playerListUpdate':
+              console.log('[HOST MONITOR] Received player list update:', message);
+              handlePlayerListUpdate(message.data);
+              break;
+
+            case 'cardsMatched':
+              // 當有玩家配對成功時播放音效
+              if (message.player !== playerNickname) {
+                soundManager.playSound('scoreUpdate', 0.4);
+              }
               break;
 
             default:
@@ -202,93 +209,90 @@ const HostGameMonitor: React.FC = () => {
     };
   }, [roomId, isHost, playerNickname, gameStats.playersCount]);
 
-  // 每秒主動請求玩家資料
+  // 處理 WebSocket 接收到的玩家列表更新
+  const handlePlayerListUpdate = (data: any) => {
+    if (data.players) {
+      const newPlayers = data.players.map((player: any) => ({
+        nickname: player.nickname,
+        score: player.score || 0,
+        matchedPairs: Math.floor((player.score || 0) / 2),
+        isConnected: true,
+        isHost: player.isHost || false
+      }));
+      
+      // 檢測玩家數量變化
+      const currentPlayerCount = newPlayers.filter((p: Player) => !p.isHost).length;
+      if (previousPlayerCount > 0 && currentPlayerCount > previousPlayerCount) {
+        soundManager.playSound('playerJoin', 0.5);
+      } else if (previousPlayerCount > 0 && currentPlayerCount < previousPlayerCount) {
+        soundManager.playSound('playerLeave', 0.5);
+      }
+      setPreviousPlayerCount(currentPlayerCount);
+      
+      // 檢測分數更新
+      newPlayers.forEach((player: Player) => {
+        if (!player.isHost) {
+          const previousScore = previousScores.get(player.nickname) || 0;
+          if (previousScore > 0 && player.score > previousScore) {
+            soundManager.playSound('scoreUpdate', 0.4);
+          }
+          previousScores.set(player.nickname, player.score);
+        }
+      });
+      setPreviousScores(new Map(previousScores));
+      
+      // 檢測排行榜變化
+      const currentRankings = newPlayers
+        .filter((p: Player) => !p.isHost)
+        .sort((a: Player, b: Player) => b.score - a.score)
+        .map((p: Player) => p.nickname);
+      
+      if (previousRankings.length > 0 && currentRankings.length > 0) {
+        // 檢查前三名是否有變化
+        const topThreeChanged = currentRankings.slice(0, 3).some((nickname: string, index: number) => 
+          previousRankings[index] !== nickname
+        );
+        
+        if (topThreeChanged) {
+          soundManager.playSound('scoreUpdate', 0.6);
+        }
+      }
+      setPreviousRankings(currentRankings);
+      
+      setPlayers(newPlayers);
+      setGameStats(prev => ({
+        ...prev,
+        playersCount: data.players.length
+      }));
+    }
+  };
+
+  // 初始載入玩家資料（僅執行一次）
   useEffect(() => {
     if (!roomId || !isHost) return;
 
-    const fetchPlayerData = async () => {
+    const fetchInitialPlayerData = async () => {
       try {
-        const response = await fetch(`http://localhost:80/api/room/${roomId}/players`);
+        const response = await fetch(API_CONFIG.ENDPOINTS.ROOM_PLAYERS(roomId));
         if (response.ok) {
           const data = await response.json();
-          console.log('[HOST MONITOR] Fetched player data:', data);
-          
-          if (data.players) {
-            const newPlayers = data.players.map((player: any) => ({
-              nickname: player.nickname,
-              score: player.score || 0,
-              matchedPairs: Math.floor((player.score || 0) / 2),
-              isConnected: true,
-              isHost: player.isHost || false
-            }));
-            
-            // 檢測玩家數量變化
-            const currentPlayerCount = newPlayers.filter((p: Player) => !p.isHost).length;
-            if (previousPlayerCount > 0 && currentPlayerCount > previousPlayerCount) {
-              soundManager.playSound('playerJoin', 0.5);
-            } else if (previousPlayerCount > 0 && currentPlayerCount < previousPlayerCount) {
-              soundManager.playSound('playerLeave', 0.5);
-            }
-            setPreviousPlayerCount(currentPlayerCount);
-            
-            // 檢測分數更新
-            newPlayers.forEach((player: Player) => {
-              if (!player.isHost) {
-                const previousScore = previousScores.get(player.nickname) || 0;
-                if (previousScore > 0 && player.score > previousScore) {
-                  soundManager.playSound('scoreUpdate', 0.4);
-                }
-                previousScores.set(player.nickname, player.score);
-              }
-            });
-            setPreviousScores(new Map(previousScores));
-            
-            // 檢測排行榜變化
-            const currentRankings = newPlayers
-              .filter((p: Player) => !p.isHost)
-              .sort((a: Player, b: Player) => b.score - a.score)
-              .map((p: Player) => p.nickname);
-            
-            if (previousRankings.length > 0 && currentRankings.length > 0) {
-              // 檢查前三名是否有變化
-              const topThreeChanged = currentRankings.slice(0, 3).some((nickname: string, index: number) => 
-                previousRankings[index] !== nickname
-              );
-              
-              if (topThreeChanged) {
-                soundManager.playSound('scoreUpdate', 0.6);
-              }
-            }
-            setPreviousRankings(currentRankings);
-            
-            setPlayers(newPlayers);
-            setGameStats(prev => ({
-              ...prev,
-              playersCount: data.players.length
-            }));
-          }
+          console.log('[HOST MONITOR] Initial player data loaded:', data);
+          handlePlayerListUpdate(data);
           
           if (data.gameEnded !== undefined) {
             setGameEnded(data.gameEnded);
           }
         } else {
-          console.error('[HOST MONITOR] Failed to fetch player data:', response.status);
+          console.error('[HOST MONITOR] Failed to fetch initial player data:', response.status);
         }
       } catch (error) {
-        console.error('[HOST MONITOR] Error fetching player data:', error);
+        console.error('[HOST MONITOR] Error fetching initial player data:', error);
       }
     };
 
-    // 立即執行一次
-    fetchPlayerData();
-    
-    // 每秒執行一次
-    const interval = setInterval(fetchPlayerData, 1000);
-
-    return () => {
-      clearInterval(interval);
-    };
-  }, [roomId, isHost]);
+    // 只在組件載入時執行一次
+    fetchInitialPlayerData();
+  }, [roomId, isHost]); // 移除其他依賴，避免重複執行
 
   // 時間倒數
   useEffect(() => {
@@ -324,7 +328,7 @@ const HostGameMonitor: React.FC = () => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [timeLeft, gameEnded]);
+  }, [timeLeft, gameEnded, countdownSoundPlayed, soundManager]);
 
   // 格式化時間顯示
   const formatTime = (seconds: number): string => {
@@ -333,10 +337,7 @@ const HostGameMonitor: React.FC = () => {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // 計算進度百分比
-  const getProgressPercentage = (): number => {
-    return ((gameStats.gameTime - timeLeft) / gameStats.gameTime) * 100;
-  };
+
 
   // 排序玩家（按分數降序）
   const sortedPlayers = [...players].filter(player => !player.isHost).sort((a, b) => b.score - a.score);

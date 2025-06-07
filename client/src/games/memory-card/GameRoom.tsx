@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import WebSocketManager from '../../utils/WebSocketManager';
 import {
-    Container, Typography, Button, TextField, Box, Grid, Paper, List, ListItem, ListItemText, CircularProgress, Alert
+    Container, Typography, Button, Box, Grid, Paper, List, ListItem, ListItemText, CircularProgress
 } from '@mui/material';
 import { QRCodeSVG } from 'qrcode.react';
 import { styled } from '@mui/material/styles';
@@ -32,17 +32,13 @@ function GameRoom() {
     const invitePlayersText = "邀請玩家:";
     const scanOrShareLinkText = (url: string) => <>掃描或分享鏈接: <a href={url} target="_blank" rel="noopener noreferrer">{url}</a></>;
     const waitingForHostText = "等待房主開始遊戲...";
-    const gameInProgressHostViewText = "遊戲進行中 (房主視角)";
-    const gameBoardMonitoringText = "遊戲面板 (監控)";
     const finalRankingsText = "最終排名:";
     const currentScoresText = "目前得分:";
     const youText = " (你)";
-    const hostText = " (房主)";
     const gameOverText = "遊戲結束!";
     const returnToHomeText = "返回首頁";
     const playersInRoomText = (count: number) => `房間內的玩家 (${count}):`;
     const noOtherPlayersText = "尚無其他玩家加入。";
-    const startGameText = "開始遊戲";
     const testAloneText = "你可以單獨開始遊戲進行測試。";
     const { roomId } = useParams<{ roomId: string }>();
     const location = useLocation();
@@ -71,18 +67,16 @@ function GameRoom() {
     };
 
     const [playerNickname, setPlayerNickname] = useState<string>(getPlayerNickname());
-    const [isHost, setIsHost] = useState<boolean>(isHostFromState);
+    const [isHost] = useState<boolean>(isHostFromState);
     const [players, setPlayers] = useState<Player[]>([]);
     const [gameStarted, setGameStarted] = useState<boolean>(false);
     const [gameEnded, setGameEnded] = useState<boolean>(false);
     const [showQR, setShowQR] = useState<boolean>(true);
-    const [isWsConnected, setIsWsConnected] = useState<boolean>(false);
     const ws = useRef<WebSocket | null>(null);
 
     // 遊戲設定已移除，相關 state 不再需要
     // const [numPairs, setNumPairs] = useState<string>('8');
     // const [duration, setDuration] = useState<string>('60');
-    const [gameInfo, setGameInfo] = useState<any>(null);
     const [gameSettings, setGameSettings] = useState<any>(null);
 
     useEffect(() => {
@@ -123,25 +117,19 @@ function GameRoom() {
             .then((websocket) => {
                 console.log('WebSocket connection established in GameRoom');
                 ws.current = websocket;
-                setIsWsConnected(true);
                 setShowQR(isHost);
                 
-                // Send a join message immediately after connection is established
-                 wsManager.send({
-                     type: 'join',
-                     payload: {
-                         roomId: roomId,
-                         nickname: playerNickname,
-                         isHost: isHost
-                     }
-                 });
+                // Join message is already sent by WebSocketManager in onopen handler
                 
                 // Add message handler for this component
                 wsManager.addMessageHandler('gameRoom', (message) => {
                     console.log('Received message:', message);
 
                     if (message.type === 'playerListUpdate') {
-                        setPlayers(message.data || []);
+                        // Extract players from message.data.players
+                        const playersData = message.data && Array.isArray(message.data.players) ? message.data.players : [];
+                        console.log('Setting players:', playersData);
+                        setPlayers(playersData);
                         // Update room state based on server response
                         if (message.waitingForPlayers !== undefined) {
                             console.log('Room waiting for players:', message.waitingForPlayers);
@@ -200,7 +188,6 @@ function GameRoom() {
                             numPairs: message.cards ? message.cards.length / 2 : 8,
                             gameDuration: message.gameTime || 60
                         };
-                        setGameInfo(receivedGameSettings);
                         console.log('Game settings set:', receivedGameSettings);
                         
                         // Store game data in localStorage for the game page to access
@@ -251,7 +238,6 @@ function GameRoom() {
             })
             .catch((error) => {
                 console.error('[WEBSOCKET] GameRoom connection error:', error);
-                setIsWsConnected(false);
                 
                 // If error is due to active game in different room, reset game state
                 if (error.message === 'Game is active in different room') {
@@ -263,7 +249,6 @@ function GameRoom() {
                             .then((websocket) => {
                                 console.log('WebSocket reconnected after game state reset');
                                 ws.current = websocket;
-                                setIsWsConnected(true);
                                 setShowQR(isHost);
                             })
                             .catch((retryError) => {
