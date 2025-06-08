@@ -30,9 +30,15 @@ func HandleMessage(client *core.Client, room *core.Room, msgData []byte) {
 	switch msgType {
 	case "join":
 		handleJoinMessage(client, room)
+	case "startGameWithNotification":
+		// Handle combined game start with notification
+		handleStartGameWithNotification(client, room, msg)
 	case "hostStartGame":
 		// Delegate to memory game handler with game settings
 		memory.HandleHostStartGame(room, client, msg)
+	case "notifyPlatformPlayers":
+		// Handle platform player notification
+		handleNotifyPlatformPlayers(client, room, msg)
 	case "cardClick", "flipCard", "twoCardsClick", "scoreUpdate":
 		// Convert message to core.Message format
 		coreMsg := core.Message{
@@ -130,4 +136,51 @@ func broadcastPlayerListUpdate(room *core.Room) {
 	}
 
 	BroadcastMessage(room, playerListMsg)
+}
+
+// handleNotifyPlatformPlayers handles platform player notification
+func handleNotifyPlatformPlayers(client *core.Client, room *core.Room, msg map[string]interface{}) {
+	log.Printf("[ROOM %s] Host %s notifying platform players", room.ID, client.Nickname)
+	
+	// Extract message content
+	message, _ := msg["message"].(string)
+	gameType, _ := msg["gameType"].(string)
+	
+	// Create notification message
+	notificationMsg := map[string]interface{}{
+		"type": "platformNotification",
+		"data": map[string]interface{}{
+			"message":  message,
+			"gameType": gameType,
+			"roomId":   room.ID,
+		},
+	}
+	
+	// Broadcast to all clients in the room
+	BroadcastMessage(room, notificationMsg)
+}
+
+// handleStartGameWithNotification handles combined game start with platform notification
+func handleStartGameWithNotification(client *core.Client, room *core.Room, msg map[string]interface{}) {
+	log.Printf("[DEBUG] handleStartGameWithNotification called by %s in room %s", client.Nickname, room.ID)
+	
+	// First, send platform notification to all players
+	message, _ := msg["message"].(string)
+	gameType, _ := msg["gameType"].(string)
+	
+	// Create notification message
+	notificationMsg := map[string]interface{}{
+		"type": "platformNotification",
+		"data": map[string]interface{}{
+			"message":  message,
+			"gameType": gameType,
+			"roomId":   room.ID,
+		},
+	}
+	
+	// Broadcast notification to all clients in the room
+	BroadcastMessage(room, notificationMsg)
+	
+	// Then start the game with the provided settings
+	memory.HandleHostStartGame(room, client, msg)
 }

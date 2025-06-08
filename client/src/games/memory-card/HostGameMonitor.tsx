@@ -47,6 +47,8 @@ const HostGameMonitor: React.FC = () => {
   const gameSettings = gameState?.gameSettings;
   const playerNickname = gameState?.playerNickname || 'Host';
   const isHost = gameState?.isHost || false;
+  const fromPlatformRoom = gameState?.fromPlatformRoom || false; // 是否來自platform房間
+  const fromCreateGame = gameState?.fromCreateGame || false; // 是否來自創建遊戲頁面
   const [players, setPlayers] = useState<Player[]>([]);
   const [storedGameSettings, setStoredGameSettings] = useState<any>(null);
   
@@ -135,92 +137,6 @@ const HostGameMonitor: React.FC = () => {
     }
   };
 
-  // WebSocket 連接 (僅用於遊戲控制，不接收玩家列表更新)
-  useEffect(() => {
-    if (!roomId || !isHost) return;
-
-    const wsManager = WebSocketManager.getInstance();
-    
-    // Connect or reuse existing connection
-    wsManager.connect(roomId, playerNickname, isHost)
-      .then((websocket) => {
-        console.log('[HOST MONITOR] WebSocket connection established');
-        wsRef.current = websocket;
-        
-        // Add message handler for this component
-        wsManager.addMessageHandler('hostGameMonitor', (message) => {
-          console.log('[HOST MONITOR] Received message:', message);
-
-          switch (message.type) {
-            case 'gameData':
-              console.log('[HOST MONITOR] Received game data:', message);
-              const newGameStats = {
-                totalPairs: message.cards ? message.cards.length / 2 : 8,
-                gameTime: message.gameTime || 60,
-                playersCount: gameStats.playersCount
-              };
-              setGameStats(newGameStats);
-              setTimeLeft(message.gameTime || 60);
-              // 播放遊戲開始音效和背景音樂
-              soundManager.playSound('gameStart', 0.6);
-              soundManager.playBackgroundMusic();
-              break;
-
-            case 'timeLeft':
-              setTimeLeft(message.timeLeft);
-              break;
-              
-            case 'timeUpdate':
-              console.log('[HOST MONITOR] Received time update from server:', message.timeLeft);
-              setTimeLeft(message.timeLeft);
-              break;
-
-            case 'gameEnded':
-              console.log('[HOST MONITOR] Game ended:', message.reason, 'Final results:', message.finalResults);
-              setGameEnded(true);
-              // 保存最終結果用於顯示前三名
-              if (message.finalResults && Array.isArray(message.finalResults)) {
-                setFinalResults(message.finalResults);
-              }
-              // 播放遊戲結束音效並停止背景音樂
-              soundManager.playSound('gameEnd', 0.7);
-              soundManager.stopBackgroundMusic();
-              break;
-
-            case 'playerListUpdate':
-              console.log('[HOST MONITOR] Received player list update:', message);
-              handlePlayerListUpdate(message.data);
-              break;
-
-            case 'cardsMatched':
-              // 當有玩家配對成功時播放音效
-              if (message.player !== playerNickname) {
-                soundManager.playSound('scoreUpdate', 0.4);
-              }
-              break;
-
-            default:
-              console.log('[HOST MONITOR] Unknown message type:', message.type);
-          }
-        });
-      })
-      .catch((error) => {
-        console.error('[HOST MONITOR] WebSocket connection error:', error);
-      });
-
-    // Cleanup function - remove message handler but don't disconnect during game
-    return () => {
-      const wsManager = WebSocketManager.getInstance();
-      wsManager.removeMessageHandler('hostGameMonitor');
-      
-      // 停止背景音樂
-      soundManager.stopBackgroundMusic();
-      
-      // Don't disconnect during game - let WebSocketManager handle this
-      console.log('[HOST MONITOR] Component unmounting, message handler removed');
-    };
-  }, [roomId, isHost, playerNickname, gameStats.playersCount]);
-
   // 處理 WebSocket 接收到的玩家列表更新
   const handlePlayerListUpdate = (data: any) => {
     if (data.players) {
@@ -271,334 +187,343 @@ const HostGameMonitor: React.FC = () => {
         );
         
         if (topThreeChanged) {
-          soundManager.playSound('scoreUpdate', 0.6);
+          soundManager.playSound('rankChange', 0.3);
         }
       }
       setPreviousRankings(currentRankings);
       
       setPlayers(newPlayers);
-      setGameStats(prev => ({
-        ...prev,
-        playersCount: data.players.length
-      }));
+      setGameStats(prev => ({ ...prev, playersCount: newPlayers.length }));
     }
   };
 
-  // 初始載入玩家資料（僅執行一次）
+  // WebSocket 連接並自動開始遊戲
   useEffect(() => {
     if (!roomId || !isHost) return;
 
-    const fetchInitialPlayerData = async () => {
+    const wsManager = WebSocketManager.getInstance();
+    
+    const setupConnection = async () => {
+      let websocket;
+      
       try {
-        const response = await fetch(API_CONFIG.ENDPOINTS.ROOM_PLAYERS(roomId));
-        if (response.ok) {
-          const data = await response.json();
-          console.log('[HOST MONITOR] Initial player data loaded:', data);
-          handlePlayerListUpdate(data);
-          
-          if (data.gameEnded !== undefined) {
-            setGameEnded(data.gameEnded);
-          }
+        // 使用已建立的platform連接
+        websocket = wsManager.getConnection();
+        if (!websocket) {
+          console.log('[HOST MONITOR] No existing connection found, creating new one');
+          websocket = await wsManager.connect(roomId, playerNickname, isHost);
         } else {
-          console.error('[HOST MONITOR] Failed to fetch initial player data:', response.status);
+          console.log('[HOST MONITOR] Using existing platform WebSocket connection');
+          }
+       
+        wsRef.current = websocket;
+
+        // 自動發送開始遊戲訊息
+        if (isHost && storedGameSettings) {
+          console.log('[HOST MONITOR] Sending start game message with settings:', storedGameSettings);
+          const startGameMessage = {
+            type: 'hostStartGame',
+            payload: {
+              roomId: roomId,
+              numPairs: Math.floor(storedGameSettings.cardCount / 2),
+              gameTime: storedGameSettings.duration * 60
+            }
+          };
+          websocket.send(JSON.stringify(startGameMessage));
         }
+
+        // Add message handler for this component
+        wsManager.addMessageHandler('hostGameMonitor', (message: any) => {
+          console.log('[HOST MONITOR] Received message:', message);
+
+          switch (message.type) {
+            case 'gameData':
+              console.log('[HOST MONITOR] Received game data:', message);
+              const newGameStats = {
+                totalPairs: message.cards ? message.cards.length / 2 : 8,
+                gameTime: message.gameTime || 60,
+                playersCount: gameStats.playersCount
+              };
+              setGameStats(newGameStats);
+              setTimeLeft(message.gameTime || 60);
+              // 播放遊戲開始音效和背景音樂
+              soundManager.playSound('gameStart', 0.6);
+              soundManager.playBackgroundMusic();
+              break;
+
+            case 'timeLeft':
+              setTimeLeft(message.timeLeft);
+              break;
+
+            case 'timeUpdate':
+              console.log('[HOST MONITOR] Received time update from server:', message.timeLeft);
+              setTimeLeft(message.timeLeft);
+              break;
+
+            case 'gameEnded':
+              console.log('[HOST MONITOR] Game ended:', message.reason, 'Final results:', message.finalResults);
+              setGameEnded(true);
+              // 保存最終結果用於顯示前三名
+              if (message.finalResults && Array.isArray(message.finalResults)) {
+                setFinalResults(message.finalResults);
+              }
+              // 播放遊戲結束音效並停止背景音樂
+              soundManager.playSound('gameEnd', 0.7);
+              soundManager.stopBackgroundMusic();
+              break;
+
+            case 'playerListUpdate':
+              console.log('[HOST MONITOR] Received player list update:', message);
+              handlePlayerListUpdate(message.data);
+              break;
+
+            case 'cardsMatched':
+              // 當有玩家配對成功時播放音效
+              if (message.player !== playerNickname) {
+                soundManager.playSound('scoreUpdate', 0.4);
+              }
+              break;
+
+            case 'platformNotification':
+              console.log('[HOST MONITOR] Received platform notification:', message.data);
+              // 可以在這裡處理平台通知，例如顯示通知訊息
+              break;
+
+            case 'gameStarted':
+              console.log('[HOST MONITOR] Game started notification:', message);
+              // 遊戲開始通知，可以更新 UI 狀態
+              if (message.gameData) {
+                const newGameStats = {
+                  totalPairs: message.gameData.cards ? message.gameData.cards.length / 2 : 8,
+                  gameTime: message.gameData.gameTime || 60,
+                  playersCount: gameStats.playersCount
+                };
+                setGameStats(newGameStats);
+                setTimeLeft(message.gameData.gameTime || 60);
+              }
+              break;
+
+            default:
+              console.log('[HOST MONITOR] Unknown message type:', message.type);
+              break;
+          }
+        });
+
       } catch (error) {
-        console.error('[HOST MONITOR] Error fetching initial player data:', error);
+        console.error('[HOST MONITOR] Failed to set up WebSocket connection:', error);
+        navigate('/error', { state: { message: 'Failed to connect to game server.' } });
       }
     };
 
-    // 只在組件載入時執行一次
-    fetchInitialPlayerData();
-  }, [roomId, isHost]); // 移除其他依賴，避免重複執行
+    setupConnection();
 
-  // 處理時間相關音效（由服務端時間更新觸發）
-  useEffect(() => {
-    if (gameEnded || timeLeft <= 0) return;
-
-    // 倒數時間音效
-    if (timeLeft === 30 && !countdownSoundPlayed.has(30)) {
-      soundManager.playSound('timeWarning', 0.4);
-      setCountdownSoundPlayed(new Set(Array.from(countdownSoundPlayed).concat([30])));
-    } else if (timeLeft === 10 && !countdownSoundPlayed.has(10)) {
-      soundManager.playSound('timeWarning', 0.6);
-      setCountdownSoundPlayed(new Set(Array.from(countdownSoundPlayed).concat([10])));
-    } else if (timeLeft === 5 && !countdownSoundPlayed.has(5)) {
-      // 最後5秒倒數音效
-      soundManager.playSound('timeWarning', 0.8);
-      setCountdownSoundPlayed(new Set(Array.from(countdownSoundPlayed).concat([5])));
-    } else if (timeLeft <= 4 && timeLeft > 0 && !countdownSoundPlayed.has(timeLeft)) {
-      // 每秒倒數音效
-      soundManager.playSound('scoreUpdate', 0.7);
-      setCountdownSoundPlayed(new Set(Array.from(countdownSoundPlayed).concat([timeLeft])));
-    }
-  }, [timeLeft, gameEnded, countdownSoundPlayed, soundManager]);
-
-  // 格式化時間顯示
-  const formatTime = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
-
-
-  // 排序玩家（按分數降序）
-  const sortedPlayers = [...players].filter(player => !player.isHost).sort((a, b) => b.score - a.score);
-
-  // 結束遊戲並返回房間
-  const endGameAndReturn = () => {
+    return () => {
+      //const wsManager = WebSocketManager.getInstance();
+      //wsManager.removeMessageHandler('hostGameMonitor');
+      
     // 停止背景音樂
-    soundManager.stopBackgroundMusic();
-    
-    // Send close game message to server
-    const wsManager = WebSocketManager.getInstance();
-    wsManager.send({ type: 'hostCloseGame' });
-    console.log('[HOST MONITOR] Sent hostCloseGame message to server');
-    
-    // Force disconnect all connections when game ends
-    wsManager.forceDisconnect();
-    
-    navigate(`/gameroom/${roomId}`, {
-      state: {
-        playerNickname,
-        isHost: true
+      soundManager.stopBackgroundMusic();
+      
+      //console.log('[HOST MONITOR] Cleaning up WebSocket connection');
+    };
+  }, [roomId, isHost, playerNickname, navigate, gameState, storedGameSettings, fromPlatformRoom, fromCreateGame]);
+
+  // 遊戲計時器
+  useEffect(() => {
+    if (timeLeft <= 0) {
+      setGameEnded(true);
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setTimeLeft(prevTime => prevTime - 1);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [timeLeft]);
+
+  // 監聽遊戲結束狀態
+  useEffect(() => {
+    if (gameEnded) {
+      console.log('[HOST MONITOR] Game ended. Calculating final results...');
+      // 根據分數計算最終排名
+      const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
+      setFinalResults(sortedPlayers);
+      soundManager.stopBackgroundMusic();
+      soundManager.playSound('gameEnd');
+    }
+  }, [gameEnded, players, soundManager]);
+
+  // 監聽玩家數量變化，播放音效
+  useEffect(() => {
+    if (players.length > previousPlayerCount) {
+      soundManager.playSound('playerJoin');
+    } else if (players.length < previousPlayerCount) {
+      soundManager.playSound('playerLeave');
+    }
+    setPreviousPlayerCount(players.length);
+  }, [players]);
+
+  // 監聽分數變化，播放音效
+  useEffect(() => {
+    players.forEach(player => {
+      const previousScore = previousScores.get(player.nickname) || 0;
+      if (player.score > previousScore) {
+        soundManager.playSound('scoreUpdate');
       }
     });
+    setPreviousScores(new Map(players.map(p => [p.nickname, p.score])));
+  }, [players]);
+
+  // 監聽倒計時音效
+  useEffect(() => {
+    const playCountdownSound = (time: number) => {
+      if (!countdownSoundPlayed.has(time)) {
+        soundManager.playSound('timeWarning');
+        setCountdownSoundPlayed(prev => new Set(prev).add(time));
+      }
+    };
+
+    if (timeLeft === 10 || timeLeft === 5 || timeLeft === 3 || timeLeft === 2 || timeLeft === 1) {
+      playCountdownSound(timeLeft);
+    }
+  }, [timeLeft, countdownSoundPlayed, soundManager]);
+
+  // 監聽排名變化，播放音效
+  useEffect(() => {
+    const currentRankings = [...players].sort((a, b) => b.score - a.score).map(p => p.nickname);
+    if (previousRankings.length > 0) {
+      for (let i = 0; i < currentRankings.length; i++) {
+        if (currentRankings[i] !== previousRankings[i]) {
+          soundManager.playSound('scoreUpdate');
+          break;
+        }
+      }
+    }
+    setPreviousRankings(currentRankings);
+  }, [players]);
+
+  const formatTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
-  // 移除等待遊戲數據的載入狀態檢查
-  if (!isHost) {
-    return null; // 防止閃爍
-  }
+  const getPlayerStatus = (isConnected: boolean) => {
+    return isConnected ? '在線' : '離線';
+  };
+
+  const getPlayerStatusColor = (isConnected: boolean) => {
+    return isConnected ? 'success' : 'error';
+  };
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-        <Typography 
-          variant="h4" 
-          component="h1" 
-          sx={{ 
-            fontWeight: 'bold',
-            color: 'primary.main'
-          }}
-        >
-          🎮 遊戲監控台 - 房間 {roomId}
+    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h4" component="h1" gutterBottom>
+          遊戲監控 - 房間號: {roomId}
         </Typography>
-        
-        <IconButton 
-          onClick={toggleBackgroundMusic}
-          color="primary"
-          size="large"
-          sx={{ 
-            backgroundColor: 'rgba(25, 118, 210, 0.1)',
-            '&:hover': {
-              backgroundColor: 'rgba(25, 118, 210, 0.2)'
-            }
-          }}
-        >
+        <IconButton onClick={toggleBackgroundMusic} color="primary">
           {isMusicPlaying ? <VolumeUp /> : <VolumeOff />}
         </IconButton>
       </Box>
 
-      {/* 遊戲狀態 */}
-      <Box sx={{ mb: 4, textAlign: 'center' }}>
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 2, mb: 2 }}>
-          {gameEnded && (
-            <Chip 
-              label="遊戲結束" 
-              color="error" 
-              size="medium" 
-              sx={{ fontSize: '1.2rem', py: 2 }}
-            />
-          )}
-          <IconButton
-            onClick={() => soundManager.setMuted(!soundManager.isSoundMuted())}
-            color={soundManager.isSoundMuted() ? 'default' : 'primary'}
-            title={soundManager.isSoundMuted() ? '開啟音效' : '關閉音效'}
-          >
-            {soundManager.isSoundMuted() ? <VolumeOff /> : <VolumeUp />}
-          </IconButton>
-          <IconButton
-            onClick={() => soundManager.setMusicMuted(!soundManager.isMusicSoundMuted())}
-            color={soundManager.isMusicSoundMuted() ? 'default' : 'secondary'}
-            title={soundManager.isMusicSoundMuted() ? '開啟背景音樂' : '關閉背景音樂'}
-          >
-            {soundManager.isMusicSoundMuted() ? '🎵' : '🎶'}
-          </IconButton>
-        </Box>
-      </Box>
-
-      {/* 主要內容區域 */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        {/* 左側：遊戲統計 */}
-        <Grid item xs={12} md={3}>
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={12}>
-              <Card>
-                <CardContent sx={{ textAlign: 'center' }}>
-                  <Timer sx={{ fontSize: 40, color: 'primary.main', mb: 1 }} />
-                  <Typography variant="h4" component="div">
-                    {formatTime(timeLeft)}
-                  </Typography>
-                  <Typography color="text.secondary">
-                    剩餘時間
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-            
-            <Grid item xs={12} md={12}>
-              <Card>
-                <CardContent sx={{ textAlign: 'center' }}>
-                  <People sx={{ fontSize: 40, color: 'success.main', mb: 1 }} />
-                  <Typography variant="h4" component="div">
-                    {sortedPlayers.length}
-                  </Typography>
-                  <Typography color="text.secondary">
-                    參與玩家
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
-        </Grid>
-        
-        {/* 右側：即時排行榜 */}
-        <Grid item xs={12} md={9}>
-          <Paper sx={{ height: '100%' }}>
-            <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
-              <Typography variant="h6" component="h2">
-                🏆 即時排行榜
-              </Typography>
-            </Box>
-            <TableContainer sx={{ maxHeight: 400 }}>
-              <Table size="small">
+      <Grid container spacing={3}>
+        <Grid item xs={12} md={8}>
+          <Paper elevation={3} sx={{ p: 3 }}>
+            <Typography variant="h5" gutterBottom>玩家列表</Typography>
+            <TableContainer>
+              <Table>
                 <TableHead>
                   <TableRow>
-                    <TableCell><strong>排名</strong></TableCell>
-                    <TableCell><strong>玩家</strong></TableCell>
-                    <TableCell align="center"><strong>分數</strong></TableCell>
-                    <TableCell align="center"><strong>狀態</strong></TableCell>
+                    <TableCell>頭像</TableCell>
+                    <TableCell>暱稱</TableCell>
+                    <TableCell>分數</TableCell>
+                    <TableCell>配對成功數</TableCell>
+                    <TableCell>狀態</TableCell>
+                    <TableCell>角色</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {sortedPlayers.length > 0 ? (
-                    sortedPlayers.map((player, index) => (
-                      <TableRow 
-                        key={player.nickname}
-                        sx={{ 
-                          backgroundColor: index === 0 ? 'gold' : 
-                                         index === 1 ? 'silver' : 
-                                         index === 2 ? '#CD7F32' : 'inherit',
-                          opacity: player.isConnected ? 1 : 0.6
-                        }}
-                      >
-                        <TableCell>
-                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            {index === 0 && '🥇'}
-                            {index === 1 && '🥈'}
-                            {index === 2 && '🥉'}
-                            {index > 2 && `#${index + 1}`}
-                          </Box>
-                        </TableCell>
-                        <TableCell>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Avatar avatar={player.avatar || 'cat'} size={32} />
-                            <Typography variant="body2" fontWeight={index < 3 ? 'bold' : 'normal'}>
-                              {player.nickname}
-                            </Typography>
-                          </Box>
-                        </TableCell>
-                        <TableCell align="center">
-                          <Typography variant="body1" color="primary" fontWeight="bold">
-                            {player.score}
-                          </Typography>
-                        </TableCell>
-                        <TableCell align="center">
-                          <Chip 
-                            label={player.isConnected ? '在線' : '離線'} 
-                            color={player.isConnected ? 'success' : 'error'}
-                            size="small"
-                          />
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={4} align="center">
-                        <Typography color="text.secondary" variant="body2">
-                          等待玩家加入...
-                        </Typography>
+                  {players.map((player, index) => (
+                    <TableRow key={index}>
+                      <TableCell>
+                        <Avatar avatar={player.avatar || 'cat'} size={40} />
                       </TableCell>
+                      <TableCell>{player.nickname}</TableCell>
+                      <TableCell>{player.score}</TableCell>
+                      <TableCell>{player.matchedPairs}</TableCell>
+                      <TableCell>
+                        <Chip
+                          label={getPlayerStatus(player.isConnected)}
+                          color={getPlayerStatusColor(player.isConnected)}
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell>{player.isHost ? '主持人' : '玩家'}</TableCell>
                     </TableRow>
-                  )}
+                  ))}
                 </TableBody>
               </Table>
             </TableContainer>
           </Paper>
         </Grid>
+
+        <Grid item xs={12} md={4}>
+          <Card elevation={3}>
+            <CardContent>
+              <Typography variant="h5" gutterBottom>遊戲狀態</Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Timer sx={{ mr: 1 }} />
+                <Typography variant="body1">剩餘時間: {formatTime(timeLeft)}</Typography>
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <People sx={{ mr: 1 }} />
+                <Typography variant="body1">當前玩家: {players.length} / {gameStats.playersCount}</Typography>
+              </Box>
+              <Typography variant="body1">總配對數: {gameStats.totalPairs}</Typography>
+              <Typography variant="body1">遊戲時長: {gameStats.gameTime / 60} 分鐘</Typography>
+            </CardContent>
+          </Card>
+
+          {gameEnded && (
+            <Card elevation={3} sx={{ mt: 3 }}>
+              <CardContent>
+                <Typography variant="h5" gutterBottom>遊戲結果</Typography>
+                <TableContainer>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>排名</TableCell>
+                        <TableCell>暱稱</TableCell>
+                        <TableCell>分數</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {finalResults.map((player, index) => (
+                        <TableRow key={index}>
+                          <TableCell>{index + 1}</TableCell>
+                          <TableCell>{player.nickname}</TableCell>
+                          <TableCell>{player.score}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  fullWidth
+                  sx={{ mt: 2 }}
+                  onClick={() => navigate('/')}
+                >
+                  返回主頁
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </Grid>
       </Grid>
-
-      {/* 遊戲結束後顯示前三名 */}
-      {gameEnded && finalResults.length > 0 && (
-        <Box sx={{ mb: 4 }}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h5" component="h2" sx={{ mb: 3, textAlign: 'center', color: 'primary.main' }}>
-              🏆 最終排名 - 前三名
-            </Typography>
-            <Grid container spacing={2} justifyContent="center">
-              {finalResults.slice(0, 3).map((player, index) => (
-                <Grid item xs={12} sm={4} key={player.nickname}>
-                  <Card 
-                    sx={{ 
-                      textAlign: 'center',
-                      backgroundColor: index === 0 ? '#FFD700' : 
-                                     index === 1 ? '#C0C0C0' : 
-                                     index === 2 ? '#CD7F32' : 'inherit',
-                      border: '2px solid',
-                      borderColor: index === 0 ? '#FFA500' : 
-                                  index === 1 ? '#A0A0A0' : 
-                                  index === 2 ? '#8B4513' : 'divider'
-                    }}
-                  >
-                    <CardContent>
-                      <Box sx={{ mb: 2 }}>
-                        {index === 0 && <Typography variant="h3">🥇</Typography>}
-                        {index === 1 && <Typography variant="h3">🥈</Typography>}
-                        {index === 2 && <Typography variant="h3">🥉</Typography>}
-                      </Box>
-                      <Avatar avatar={player.avatar || 'cat'} size={64} />
-                      <Typography variant="h6" sx={{ mt: 1, fontWeight: 'bold' }}>
-                        {player.nickname}
-                      </Typography>
-                      <Typography variant="h5" color="primary" sx={{ fontWeight: 'bold' }}>
-                        {player.score} 分
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        第 {player.rank} 名
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              ))}
-            </Grid>
-          </Paper>
-        </Box>
-      )}
-
-      {/* 遊戲結束後的操作按鈕 */}
-      {gameEnded && (
-        <Box sx={{ textAlign: 'center' }}>
-          <Button 
-            variant="contained" 
-            size="large" 
-            onClick={endGameAndReturn}
-            sx={{ px: 4, py: 2 }}
-          >
-            返回遊戲房間
-          </Button>
-        </Box>
-      )}
     </Container>
   );
 };

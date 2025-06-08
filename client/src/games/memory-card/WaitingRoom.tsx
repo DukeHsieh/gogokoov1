@@ -214,7 +214,7 @@ function WaitingRoom() {
                                 sx={{ mt: 4 }}
                                 onClick={() => {
                                     if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-                                        ws.current.send(JSON.stringify({ type: 'startGame', payload: { roomId: roomId } }));
+                                        ws.current.send(JSON.stringify({ type: 'hostStartGame', payload: { roomId: roomId } }));
                                     }
                                 }}
                             >

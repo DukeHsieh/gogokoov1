@@ -8,7 +8,7 @@ interface AvatarProps {
 
 const Avatar: React.FC<AvatarProps> = ({ avatar, size = 40, className = '' }) => {
   const avatarPath = `/assets/images/avatars/${avatar}.svg`;
-  console.log('[AVATAR] Rendering avatar:', avatar, 'Path:', avatarPath);
+  //console.log('[AVATAR] Rendering avatar:', avatar, 'Path:', avatarPath);
   
   return (
     <img
@@ -23,10 +23,10 @@ const Avatar: React.FC<AvatarProps> = ({ avatar, size = 40, className = '' }) =>
         border: '2px solid #e0e0e0'
       }}
       onLoad={() => {
-        console.log('[AVATAR] Successfully loaded:', avatarPath);
+        //console.log('[AVATAR] Successfully loaded:', avatarPath);
       }}
       onError={(e) => {
-        console.log('[AVATAR] Failed to load:', avatarPath, 'Falling back to cat.svg');
+        //console.log('[AVATAR] Failed to load:', avatarPath, 'Falling back to cat.svg');
         // Fallback to a default avatar if the image fails to load
         const target = e.target as HTMLImageElement;
         target.src = '/assets/images/avatars/cat.svg';

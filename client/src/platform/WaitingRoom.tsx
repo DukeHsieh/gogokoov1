@@ -203,7 +203,7 @@ const WaitingRoom: React.FC<WaitingRoomProps> = () => {
           setPlayerCount(message.playerCount);
           setRoomName(message.roomName);
           break;
-        case 'gameStart':
+        case 'gameStarted':
           console.log('Game starting...');
           navigate(`/game/${roomId}`);
           break;

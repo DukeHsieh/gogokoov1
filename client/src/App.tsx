@@ -6,7 +6,7 @@ import Layout from './components/Layout';
 import { Home, GameList, Login, Register, CreateRoom, GameRoom as PlatformGameRoom, JoinGame as PlatformJoinGame, WaitingRoom as PlatformWaitingRoom } from './platform';
 
 // Game-related pages
-import { GameRoom, HostGameMonitor, WaitingRoom, CreateGame, JoinGame } from './games';
+import { HostGameMonitor, CreateGame, JoinGame } from './games';
 import { GamePage } from './games/memory-card';
 
 const theme = createTheme({
@@ -56,11 +56,11 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/join/:roomId" element={<PlatformJoinGame />} />
-            <Route path="/room/:roomId" element={<GameRoom />} />
+
             <Route path="/gameroom/:roomId" element={<PlatformGameRoom />} />
             <Route path="/game/:roomId" element={<GamePage />} />
+            <Route path="/games/memory-card/host/:roomId" element={<HostGameMonitor />} />
             <Route path="/host-monitor/:roomId" element={<HostGameMonitor />} />
-            <Route path="/waitingroom/:roomId" element={<WaitingRoom />} />
             <Route path="/platform-waiting/:roomId" element={<PlatformWaitingRoom />} />
         </Routes>
         </Layout>

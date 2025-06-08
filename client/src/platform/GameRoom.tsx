@@ -72,10 +72,13 @@ const GameRoom = () => {
   const roomSettings = location.state?.roomSettings as RoomSettings;
   const isHost = location.state?.isHost || false;
   const playerNickname = location.state?.playerNickname || '主持人';
+  const gameSettings = location.state?.gameSettings; // 遊戲設定
+  const autoStartMonitor = location.state?.autoStartMonitor || false; // 自動跳轉標記
   
   const [players, setPlayers] = useState<Player[]>([]);
   const [gameStarted, setGameStarted] = useState<boolean>(false);
   const ws = useRef<WebSocket | null>(null);
+  const [connectionEstablished, setConnectionEstablished] = useState<boolean>(false);
   
   const joinUrl = `${window.location.origin}/join/${roomId}`;
   
@@ -109,6 +112,11 @@ const GameRoom = () => {
           isHost: player.isHost || false,
           avatar: player.avatar || player.nickname,
         })));
+        
+        // 標記連接已建立
+        if (!connectionEstablished) {
+          setConnectionEstablished(true);
+        }
       }
     };
     
@@ -123,6 +131,26 @@ const GameRoom = () => {
       wsManager.removeMessageHandler('gameroom-playerListUpdate');
     };
   }, [roomId, navigate, isHost, playerNickname]);
+  
+  // 自動跳轉到monitor頁面的邏輯
+  useEffect(() => {
+    if (autoStartMonitor && connectionEstablished && isHost && gameSettings) {
+      // 延遲一下確保連接穩定
+      const timer = setTimeout(() => {
+        navigate(`/host-monitor/${roomId}`, {
+          state: {
+            gameSettings: gameSettings,
+            playerNickname: playerNickname,
+            isHost: true,
+            roomId: roomId,
+            fromPlatformRoom: true // 標記來自platform房間
+          }
+        });
+      }, 1000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [autoStartMonitor, connectionEstablished, isHost, gameSettings, roomId, playerNickname, navigate]);
   
   const handleStartGame = () => {
     // 導航到遊戲選擇頁面

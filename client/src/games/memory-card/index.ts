@@ -8,9 +8,8 @@ export { CardGrid } from './components/CardGrid';
 // 遊戲頁面組件
 export { default as CreateGame } from './CreateGame';
 export { default as JoinGame } from './JoinGame';
-export { default as GameRoom } from './GameRoom';
+
 export { default as HostGameMonitor } from './HostGameMonitor';
-export { default as WaitingRoom } from './WaitingRoom';
 
 export { useGameState } from './hooks/useGameState';
 export { useWebSocketHandler } from './hooks/useWebSocketHandler';

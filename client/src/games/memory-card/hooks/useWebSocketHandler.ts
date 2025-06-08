@@ -219,6 +219,43 @@ export const useWebSocketHandler = ({
               callbacksRef.current.onGameStarted?.(message);
               break;
               
+            case 'playerJoined':
+              console.log(`[MemoryCardGame] [${new Date().toISOString()}] Player joined:`, {
+                player: message.data?.player,
+                totalPlayers: message.data?.totalPlayers,
+                roomId: roomId
+              });
+              // playerJoined消息通常由platform處理，這裡只記錄
+              break;
+              
+            case 'gameState':
+              console.log(`[MemoryCardGame] [${new Date().toISOString()}] Game state received:`, {
+                hasGameData: !!message.gameData,
+                gameTime: message.gameTime,
+                playersCount: message.players?.length,
+                roomId: roomId
+              });
+              
+              // 處理gameState消息，類似於gameData
+              if (message.gameData) {
+                const gameData = {
+                  gameSettings: message.gameData.gameSettings || {
+                    numPairs: message.gameData.cards?.length / 2 || 8,
+                    gameDuration: message.gameTime || 300
+                  },
+                  cards: message.gameData.cards || [],
+                  gameTime: message.gameTime || 300
+                };
+                console.log(`[MemoryCardGame] [${new Date().toISOString()}] Processing gameState data:`, gameData);
+                callbacksRef.current.onGameData?.(gameData);
+              }
+              
+              // 處理玩家列表更新
+              if (message.players) {
+                callbacksRef.current.onPlayerListUpdate?.(message.players);
+              }
+              break;
+              
             default:
               console.warn(`[MemoryCardGame] [${new Date().toISOString()}] Unhandled message type:`, {
                 type: message.type,

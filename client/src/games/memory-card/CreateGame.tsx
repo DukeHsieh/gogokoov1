@@ -87,25 +87,25 @@ const CreateGame = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // if (!gameSettings.hostNickname.trim()) { // Removed validation
-    //   alert('請輸入主持人暱稱');
-    //   return;
-    // }
-    
     // 生成6位數房間號碼
     const roomId = Math.floor(100000 + Math.random() * 900000).toString();
+    
     // 保存遊戲設置到 localStorage
-    // We still save the game settings, but hostNickname is no longer part of it.
-    // However, the server now gets the host nickname from URL parameters.
-    // For client-side display consistency before WebSocket connection, we can pass a default.
-    // const hostNicknameForState = "主持人"; // Default host nickname - No longer needed
-    localStorage.setItem(`game_${roomId}`, JSON.stringify({...gameSettings })); // hostNickname removed from gameSettings
+    localStorage.setItem(`game_${roomId}`, JSON.stringify({...gameSettings }));
 
-    // 跳轉到遊戲房間，並傳遞主持人狀態 (主持人不需要暱稱)
-    navigate(`/gameroom/${roomId}`, {
+    // 直接跳轉到主持人監控頁面
+    navigate(`/games/memory-card/host/${roomId}`, {
       state: {
-        // nickname: hostNicknameForState, // Host does not need a nickname passed via state
-        isHost: true
+        isHost: true,
+        playerNickname: '主持人',
+        roomSettings: {
+          name: gameSettings.title,
+          description: gameSettings.description,
+          maxPlayers: gameSettings.participants,
+        },
+        gameSettings: gameSettings, // 傳遞遊戲設定供後續使用
+        fromCreateGame: true, // 標記來自創建遊戲頁面
+        roomId: roomId // 傳遞房間ID
       }
     });
   };
@@ -114,10 +114,7 @@ const CreateGame = () => {
     <Container maxWidth="md">
       <Box sx={{ mb: 4 }}>
         <Typography variant="h4" component="h1" gutterBottom>
-          創建新遊戲
-        </Typography>
-        <Typography variant="subtitle1" color="text.secondary">
-          設計您的互動遊戲，創造獨特的主持體驗
+          挑戰記憶王
         </Typography>
       </Box>
 
@@ -240,7 +237,7 @@ const CreateGame = () => {
                   color="primary"
                   size="large"
                 >
-                  創建遊戲
+                  開始遊戲
                 </Button>
               </Box>
             </Grid>
