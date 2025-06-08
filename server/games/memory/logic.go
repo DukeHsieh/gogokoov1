@@ -66,10 +66,6 @@ func GenerateCards(numPairs int) []Card {
 	return cards
 }
 
-
-
-
-
 // HandleGameEnd processes the end of a memory game
 func HandleGameEnd(gameRoom *core.Room) {
 	log.Printf("[MEMORY] Game ended for room %s", gameRoom.ID)
@@ -168,7 +164,7 @@ func StartMemoryGame(gameRoom *core.Room, numPairs int, gameTime int) {
 					"type":     "timeUpdate",
 					"timeLeft": gameRoom.GameTime,
 				})
-				
+
 				// Check if time is up
 				if gameRoom.GameTime <= 0 {
 					log.Printf("[MEMORY] Time up for room %s, ending game", gameRoom.ID)

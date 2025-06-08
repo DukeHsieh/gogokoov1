@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- 小熊頭像 - 吉卜力風格 -->
+  <defs>
+    <radialGradient id="bearBodyGradient" cx="0.3" cy="0.3">
+      <stop offset="0%" stop-color="#8B4513"/>
+      <stop offset="100%" stop-color="#654321"/>
+    </radialGradient>
+    <radialGradient id="bearBellyGradient" cx="0.3" cy="0.3">
+      <stop offset="0%" stop-color="#DEB887"/>
+      <stop offset="100%" stop-color="#CD853F"/>
+    </radialGradient>
+  </defs>
+  
+  <!-- 身體 -->
+  <ellipse cx="50" cy="65" rx="30" ry="25" fill="url(#bearBodyGradient)"/>
+  
+  <!-- 肚子 -->
+  <ellipse cx="50" cy="70" rx="20" ry="18" fill="url(#bearBellyGradient)"/>
+  
+  <!-- 頭部 -->
+  <circle cx="50" cy="45" r="22" fill="url(#bearBodyGradient)"/>
+  
+  <!-- 嘴部 -->
+  <ellipse cx="50" cy="52" rx="10" ry="8" fill="url(#bearBellyGradient)"/>
+  
+  <!-- 圓耳朵 -->
+  <circle cx="38" cy="32" r="8" fill="url(#bearBodyGradient)"/>
+  <circle cx="62" cy="32" r="8" fill="url(#bearBodyGradient)"/>
+  <circle cx="38" cy="32" r="4" fill="url(#bearBellyGradient)"/>
+  <circle cx="62" cy="32" r="4" fill="url(#bearBellyGradient)"/>
+  
+  <!-- 眼睛 -->
+  <circle cx="43" cy="42" r="4" fill="#000"/>
+  <circle cx="57" cy="42" r="4" fill="#000"/>
+  <circle cx="44" cy="40" r="1.5" fill="#FFF"/>
+  <circle cx="58" cy="40" r="1.5" fill="#FFF"/>
+  
+  <!-- 鼻子 -->
+  <ellipse cx="50" cy="50" rx="2.5" ry="2" fill="#000"/>
+  
+  <!-- 嘴巴 -->
+  <path d="M 46 55 Q 50 58 54 55" stroke="#000" stroke-width="1.5" fill="none"/>
+  
+  <!-- 手臂 -->
+  <ellipse cx="25" cy="70" rx="8" ry="15" fill="url(#bearBodyGradient)" transform="rotate(-20 25 70)"/>
+  <ellipse cx="75" cy="70" rx="8" ry="15" fill="url(#bearBodyGradient)" transform="rotate(20 75 70)"/>
+  
+  <!-- 腳掌 -->
+  <ellipse cx="38" cy="85" rx="8" ry="10" fill="url(#bearBodyGradient)"/>
+  <ellipse cx="62" cy="85" rx="8" ry="10" fill="url(#bearBodyGradient)"/>
+  <ellipse cx="38" cy="85" rx="4" ry="6" fill="url(#bearBellyGradient)"/>
+  <ellipse cx="62" cy="85" rx="4" ry="6" fill="url(#bearBellyGradient)"/>
+</svg>

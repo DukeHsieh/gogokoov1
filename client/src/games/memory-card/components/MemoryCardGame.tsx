@@ -27,14 +27,16 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
 
   // 從 URL 參數或 props 獲取值
   const roomId = propRoomId || paramRoomId;
-  const actualNickname = propPlayerNickname || (location.state as any)?.playerNickname || localStorage.getItem(`player_${roomId}`) || 'Player';
-  const isHost = propIsHost || (location.state as any)?.isHost || false;
+  const actualNickname = propPlayerNickname || localStorage.getItem(`player_${roomId}`) || 'Player';
+  const isHost = propIsHost || false;
   const gameSettings = propGameSettings || (location.state as any)?.gameSettings;
   const initialAvatar = (location.state as any)?.playerAvatar || 'cat';
 
   console.log(`[MemoryCardGame] [${new Date().toISOString()}] Component initialized:`, {
     roomId: roomId,
-    playerNickname: actualNickname,
+    propPlayerNickname: propPlayerNickname,
+    propIsHost: propIsHost,
+    actualNickname: actualNickname,
     isHost: isHost,
     gameSettings: gameSettings,
     locationState: location.state
@@ -129,6 +131,10 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
       updateTimeLeft(timeLeft);
     },
     onPlayerListUpdate: (players: any[]) => {
+      if (!players || !Array.isArray(players)) {
+        console.warn(`[MemoryCardGame] [${new Date().toISOString()}] Received invalid players data:`, players);
+        return;
+      }
       // 找到當前玩家並更新頭像
       const currentPlayer = players.find(p => p.nickname === actualNickname);
       if (currentPlayer && currentPlayer.avatar) {

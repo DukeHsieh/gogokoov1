@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- 小松鼠頭像 - 吉卜力風格 -->
+  <defs>
+    <radialGradient id="squirrelBodyGradient" cx="0.3" cy="0.3">
+      <stop offset="0%" stop-color="#CD853F"/>
+      <stop offset="100%" stop-color="#8B4513"/>
+    </radialGradient>
+    <radialGradient id="squirrelBellyGradient" cx="0.3" cy="0.3">
+      <stop offset="0%" stop-color="#F5DEB3"/>
+      <stop offset="100%" stop-color="#DEB887"/>
+    </radialGradient>
+  </defs>
+  
+  <!-- 大尾巴 -->
+  <ellipse cx="75" cy="50" rx="15" ry="35" fill="url(#squirrelBodyGradient)" transform="rotate(20 75 50)"/>
+  
+  <!-- 身體 -->
+  <ellipse cx="45" cy="65" rx="20" ry="18" fill="url(#squirrelBodyGradient)"/>
+  
+  <!-- 胸部 -->
+  <ellipse cx="45" cy="68" rx="12" ry="12" fill="url(#squirrelBellyGradient)"/>
+  
+  <!-- 頭部 -->
+  <ellipse cx="45" cy="45" rx="16" ry="18" fill="url(#squirrelBodyGradient)"/>
+  
+  <!-- 嘴部 -->
+  <ellipse cx="45" cy="52" rx="8" ry="6" fill="url(#squirrelBellyGradient)"/>
+  
+  <!-- 尖耳朵 -->
+  <path d="M 35 32 L 32 20 L 42 28 Z" fill="url(#squirrelBodyGradient)"/>
+  <path d="M 48 28 L 58 20 L 55 32 Z" fill="url(#squirrelBodyGradient)"/>
+  <path d="M 36 30 L 34 24 L 40 30 Z" fill="#FFB6C1"/>
+  <path d="M 50 30 L 56 24 L 54 30 Z" fill="#FFB6C1"/>
+  
+  <!-- 大眼睛 -->
+  <circle cx="40" cy="42" r="4" fill="#000"/>
+  <circle cx="50" cy="42" r="4" fill="#000"/>
+  <circle cx="41" cy="40" r="1.5" fill="#FFF"/>
+  <circle cx="51" cy="40" r="1.5" fill="#FFF"/>
+  
+  <!-- 小鼻子 -->
+  <circle cx="45" cy="48" r="1" fill="#000"/>
+  
+  <!-- 嘴巴 -->
+  <path d="M 42 52 Q 45 54 48 52" stroke="#000" stroke-width="1" fill="none"/>
+  
+  <!-- 門牙 -->
+  <rect x="43" y="50" width="1" height="3" fill="#FFF"/>
+  <rect x="46" y="50" width="1" height="3" fill="#FFF"/>
+  
+  <!-- 小手臂 -->
+  <ellipse cx="28" cy="60" rx="5" ry="10" fill="url(#squirrelBodyGradient)" transform="rotate(-30 28 60)"/>
+  <ellipse cx="62" cy="60" rx="5" ry="10" fill="url(#squirrelBodyGradient)" transform="rotate(30 62 60)"/>
+  
+  <!-- 腳掌 -->
+  <ellipse cx="38" cy="80" rx="4" ry="6" fill="url(#squirrelBodyGradient)"/>
+  <ellipse cx="52" cy="80" rx="4" ry="6" fill="url(#squirrelBodyGradient)"/>
+  
+  <!-- 尾巴紋理 -->
+  <path d="M 70 35 Q 75 40 72 45" stroke="#8B4513" stroke-width="1" fill="none"/>
+  <path d="M 75 50 Q 80 55 77 60" stroke="#8B4513" stroke-width="1" fill="none"/>
+  <path d="M 72 65 Q 77 70 74 75" stroke="#8B4513" stroke-width="1" fill="none"/>
+</svg>

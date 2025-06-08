@@ -5,11 +5,12 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/gorilla/websocket"
 	"gaming-platform/core"
-	"gaming-platform/platform/room"
 	"gaming-platform/core/message"
+	"gaming-platform/platform/room"
 	"gaming-platform/utils"
+
+	"github.com/gorilla/websocket"
 )
 
 // WebSocket upgrader
@@ -23,7 +24,7 @@ var upgrader = websocket.Upgrader{
 // HandleWebSocketConnection handles new WebSocket connections
 func HandleWebSocketConnection(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[WEBSOCKET] New WebSocket connection attempt from %s", r.RemoteAddr)
-	
+
 	// Upgrade HTTP connection to WebSocket
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -36,23 +37,23 @@ func HandleWebSocketConnection(w http.ResponseWriter, r *http.Request) {
 	// Extract parameters from query string
 	query := r.URL.Query()
 	log.Printf("[WEBSOCKET] Query parameters: %v", query)
-	
+
 	roomID := query.Get("roomId")
 	originalRoomID := roomID
 	if roomID == "" {
 		roomID = "default"
 		log.Printf("[WEBSOCKET] No roomId provided, using default room")
 	}
-	
+
 	nickname := query.Get("nickname")
 	originalNickname := nickname
 	if nickname == "" {
 		nickname = "Anonymous"
 		log.Printf("[WEBSOCKET] No nickname provided, using Anonymous")
 	}
-	
+
 	isHost := query.Get("isHost") == "true"
-	log.Printf("[WEBSOCKET] Connection details - RoomID: %s (original: %s), Nickname: %s (original: %s), IsHost: %t", 
+	log.Printf("[WEBSOCKET] Connection details - RoomID: %s (original: %s), Nickname: %s (original: %s), IsHost: %t",
 		roomID, originalRoomID, nickname, originalNickname, isHost)
 
 	// Create client

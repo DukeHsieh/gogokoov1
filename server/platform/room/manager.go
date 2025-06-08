@@ -7,8 +7,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gorilla/websocket"
 	"gaming-platform/core"
+
+	"github.com/gorilla/websocket"
 )
 
 // Global rooms storage
@@ -39,7 +40,7 @@ func CreateRoom(roomID string) *core.Room {
 
 	rooms[roomID] = room
 	log.Printf("[ROOM %s] Room created.", roomID)
-	
+
 	// Start the room's reconnection handler goroutine
 	go handleReconnections(room)
 	return room
@@ -108,6 +109,27 @@ func RegisterClient(room *core.Room, client *core.Client) {
 	}
 
 	log.Printf("[ROOM %s] Client %s registered. Total players: %d", room.ID, client.Nickname, room.TotalPlayers)
+
+	// Only broadcast player joined notification for non-host players
+	if !client.IsHost {
+		playerJoinedMsg := map[string]interface{}{
+			"type": "playerJoined",
+			"data": map[string]interface{}{
+				"player": core.Player{
+					Nickname: client.Nickname,
+					ID:       client.Nickname,
+					IsHost:   false,
+					Score:    client.Score,
+					Avatar:   client.Avatar,
+				},
+				"totalPlayers": len(room.Clients) - 1, // 不計算主持人
+			},
+		}
+		broadcastMessage(room, playerJoinedMsg)
+	}
+
+	// Always broadcast updated player list (只包含非主持人玩家)
+	broadcastPlayerListUpdate(room)
 }
 
 // UnregisterClient removes a client from a room
@@ -147,7 +169,7 @@ func handleReconnections(room *core.Room) {
 		select {
 		case req := <-room.ReconnectionChan:
 			log.Printf("[ROOM %s] Processing reconnection request for %s", room.ID, req.Client.Nickname)
-			
+
 			// Check if a client with the same nickname exists
 			var existingClient *core.Client
 			for client := range room.Clients {
@@ -160,25 +182,25 @@ func handleReconnections(room *core.Room) {
 			if existingClient != nil {
 				// Replace the old connection with the new one
 				log.Printf("[ROOM %s] Replacing connection for %s", room.ID, req.Client.Nickname)
-				
+
 				// Close old connection
 				existingClient.Conn.Close()
-				
+
 				// Update connection and preserve game state
 				existingClient.Conn = req.Client.Conn
-				
+
 				// Update host status if needed
 				if room.HostClient == existingClient {
 					existingClient.IsHost = true
 				}
-				
+
 				req.Response <- true
 			} else {
 				// No existing client found, treat as new connection
 				log.Printf("[ROOM %s] No existing client found for %s, treating as new connection", room.ID, req.Client.Nickname)
 				req.Response <- false
 			}
-			
+
 		case <-room.StopChan:
 			log.Printf("[ROOM %s] Stopping reconnection handler", room.ID)
 			return
@@ -251,5 +273,46 @@ func GetRoomList() []string {
 	for roomID := range rooms {
 		roomList = append(roomList, roomID)
 	}
+
 	return roomList
+}
+
+// broadcastMessage sends a message to all clients in a room
+func broadcastMessage(room *core.Room, message map[string]interface{}) {
+	for client := range room.Clients {
+		client.Mutex.Lock()
+		err := client.Conn.WriteJSON(message)
+		client.Mutex.Unlock()
+		if err != nil {
+			log.Printf("Error sending message to %s: %v", client.Nickname, err)
+		}
+	}
+}
+
+// broadcastPlayerListUpdate broadcasts player list update to all clients
+// Only includes non-host players as hosts should not be displayed in the player list
+func broadcastPlayerListUpdate(room *core.Room) {
+	players := []core.Player{}
+
+	// Only add non-host clients (主持人不顯示在玩家列表中)
+	for client := range room.Clients {
+		if client != room.HostClient {
+			players = append(players, core.Player{
+				Nickname: client.Nickname,
+				ID:       client.Nickname,
+				IsHost:   false,
+				Score:    client.Score,
+				Avatar:   client.Avatar,
+			})
+		}
+	}
+
+	playerListMsg := map[string]interface{}{
+		"type": "playerListUpdate",
+		"data": map[string]interface{}{
+			"players": players,
+		},
+	}
+
+	broadcastMessage(room, playerListMsg)
 }

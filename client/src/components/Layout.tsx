@@ -36,8 +36,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const menuItems = [
     { text: '首頁', icon: <HomeIcon />, path: '/' },
-    { text: '開始遊戲', icon: <SportsEsportsIcon />, path: '/games' },
-    { text: '創建遊戲', icon: <AddCircleOutlineIcon />, path: '/create' },
+    { text: '開始遊戲', icon: <SportsEsportsIcon />, path: '/create-room' },
+    { text: '創建遊戲', icon: <AddCircleOutlineIcon />, path: '/create-room' },
   ];
 
   const drawer = (

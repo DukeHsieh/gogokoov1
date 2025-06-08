@@ -12,9 +12,9 @@ type Card struct {
 
 // GameData represents the current memory game state
 type GameData struct {
-	Cards        []Card     `json:"cards"`
-	GameTime     int        `json:"gameTime"`
-	FlippedCards []CardRef  `json:"flippedCards"`
+	Cards        []Card    `json:"cards"`
+	GameTime     int       `json:"gameTime"`
+	FlippedCards []CardRef `json:"flippedCards"`
 }
 
 // CardRef represents a reference to a card using suit, value and position

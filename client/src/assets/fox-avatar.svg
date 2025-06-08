@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- 狐狸頭像 - 吉卜力風格 -->
+  <defs>
+    <radialGradient id="foxBodyGradient" cx="0.3" cy="0.3">
+      <stop offset="0%" stop-color="#FF8C42"/>
+      <stop offset="100%" stop-color="#D2691E"/>
+    </radialGradient>
+    <radialGradient id="foxBellyGradient" cx="0.3" cy="0.3">
+      <stop offset="0%" stop-color="#FFF8DC"/>
+      <stop offset="100%" stop-color="#F5DEB3"/>
+    </radialGradient>
+  </defs>
+  
+  <!-- 身體 -->
+  <ellipse cx="50" cy="65" rx="28" ry="23" fill="url(#foxBodyGradient)"/>
+  
+  <!-- 胸部白毛 -->
+  <ellipse cx="50" cy="70" rx="18" ry="15" fill="url(#foxBellyGradient)"/>
+  
+  <!-- 頭部 -->
+  <ellipse cx="50" cy="45" rx="20" ry="18" fill="url(#foxBodyGradient)"/>
+  
+  <!-- 嘴部 -->
+  <ellipse cx="50" cy="52" rx="12" ry="8" fill="url(#foxBellyGradient)"/>
+  
+  <!-- 耳朵 -->
+  <path d="M 35 32 L 40 18 L 48 30 Z" fill="url(#foxBodyGradient)"/>
+  <path d="M 52 30 L 60 18 L 65 32 Z" fill="url(#foxBodyGradient)"/>
+  <path d="M 38 30 L 41 22 L 45 32 Z" fill="#2F2F2F"/>
+  <path d="M 55 32 L 59 22 L 62 30 Z" fill="#2F2F2F"/>
+  
+  <!-- 眼睛 -->
+  <ellipse cx="43" cy="42" rx="3" ry="4" fill="#000"/>
+  <ellipse cx="57" cy="42" rx="3" ry="4" fill="#000"/>
+  <circle cx="44" cy="40" r="1" fill="#FFF"/>
+  <circle cx="58" cy="40" r="1" fill="#FFF"/>
+  
+  <!-- 鼻子 -->
+  <ellipse cx="50" cy="48" rx="2" ry="1.5" fill="#000"/>
+  
+  <!-- 嘴巴 -->
+  <path d="M 46 52 Q 50 55 54 52" stroke="#000" stroke-width="1" fill="none"/>
+  
+  <!-- 鬍鬚 -->
+  <line x1="32" y1="46" x2="40" y2="47" stroke="#000" stroke-width="0.8"/>
+  <line x1="32" y1="50" x2="40" y2="50" stroke="#000" stroke-width="0.8"/>
+  <line x1="60" y1="47" x2="68" y2="46" stroke="#000" stroke-width="0.8"/>
+  <line x1="60" y1="50" x2="68" y2="50" stroke="#000" stroke-width="0.8"/>
+  
+  <!-- 尾巴 -->
+  <ellipse cx="75" cy="75" rx="12" ry="18" fill="url(#foxBodyGradient)" transform="rotate(30 75 75)"/>
+  <ellipse cx="78" cy="78" rx="6" ry="10" fill="url(#foxBellyGradient)" transform="rotate(30 78 78)"/>
+</svg>

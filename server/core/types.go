@@ -34,21 +34,21 @@ type ReconnectionRequest struct {
 
 // Room represents a game room
 type Room struct {
-	ID                string                    `json:"id"`
-	HostClient        *Client                   `json:"hostClient,omitempty"`
-	Clients           map[*Client]bool          `json:"-"`
-	GameTime          int                       `json:"gameTime"`
-	TotalPlayers      int                       `json:"totalPlayers"`
-	PlayersReady      map[string]bool           `json:"playersReady"`
-	WaitingForPlayers bool                      `json:"waitingForPlayers"`
-	GameStarted       bool                      `json:"gameStarted"`
-	GameEnded         bool                      `json:"gameEnded"`
-	Timer             *time.Ticker              `json:"-"`
+	ID                string                   `json:"id"`
+	HostClient        *Client                  `json:"hostClient,omitempty"`
+	Clients           map[*Client]bool         `json:"-"`
+	GameTime          int                      `json:"gameTime"`
+	TotalPlayers      int                      `json:"totalPlayers"`
+	PlayersReady      map[string]bool          `json:"playersReady"`
+	WaitingForPlayers bool                     `json:"waitingForPlayers"`
+	GameStarted       bool                     `json:"gameStarted"`
+	GameEnded         bool                     `json:"gameEnded"`
+	Timer             *time.Ticker             `json:"-"`
 	ReconnectionChan  chan ReconnectionRequest `json:"-"`
-	StopChan          chan bool                 `json:"-"`
-	Mutex             sync.RWMutex              `json:"-"`
+	StopChan          chan bool                `json:"-"`
+	Mutex             sync.RWMutex             `json:"-"`
 	// Game-specific data will be handled by game modules
-	GameData          interface{}               `json:"gameData,omitempty"`
+	GameData interface{} `json:"gameData,omitempty"`
 }
 
 // Message represents a WebSocket message
@@ -73,9 +73,9 @@ type PlayerListResponse struct {
 
 // RoomInfoResponse represents the response for room info API
 type RoomInfoResponse struct {
-	RoomID           string `json:"roomId"`
-	TotalPlayers     int    `json:"totalPlayers"`
+	RoomID            string `json:"roomId"`
+	TotalPlayers      int    `json:"totalPlayers"`
 	WaitingForPlayers bool   `json:"waitingForPlayers"`
-	GameStarted      bool   `json:"gameStarted"`
-	GameEnded        bool   `json:"gameEnded"`
+	GameStarted       bool   `json:"gameStarted"`
+	GameEnded         bool   `json:"gameEnded"`
 }

@@ -6,15 +6,16 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"gaming-platform/core"
 	"gaming-platform/platform/room"
+
+	"github.com/gin-gonic/gin"
 )
 
 // HealthCheck handles health check requests
 func HealthCheck(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
-		"status": "ok",
+		"status":  "ok",
 		"message": "Gaming platform server is running",
 	})
 }
@@ -78,11 +79,11 @@ func GetRoomInfo(c *gin.Context) {
 	}
 
 	roomInfo := core.RoomInfoResponse{
-		RoomID:           gameRoom.ID,
-		TotalPlayers:     gameRoom.TotalPlayers,
+		RoomID:            gameRoom.ID,
+		TotalPlayers:      gameRoom.TotalPlayers,
 		WaitingForPlayers: gameRoom.WaitingForPlayers,
-		GameStarted:      gameRoom.GameStarted,
-		GameEnded:        gameRoom.GameEnded,
+		GameStarted:       gameRoom.GameStarted,
+		GameEnded:         gameRoom.GameEnded,
 	}
 
 	log.Printf("[API] Returning room info for room %s: %+v", roomID, roomInfo)

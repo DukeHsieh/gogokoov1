@@ -3,7 +3,7 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import Layout from './components/Layout';
 // Platform/System pages
-import { Home, GameList, Login, Register } from './platform';
+import { Home, GameList, Login, Register, CreateRoom, GameRoom as PlatformGameRoom, JoinGame as PlatformJoinGame, WaitingRoom as PlatformWaitingRoom } from './platform';
 
 // Game-related pages
 import { GameRoom, HostGameMonitor, WaitingRoom, CreateGame, JoinGame } from './games';
@@ -51,15 +51,17 @@ function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/games" element={<GameList />} />
+            <Route path="/create-room" element={<CreateRoom />} />
             <Route path="/creategame" element={<CreateGame />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            <Route path="/join/:roomId" element={<JoinGame />} />
+            <Route path="/join/:roomId" element={<PlatformJoinGame />} />
             <Route path="/room/:roomId" element={<GameRoom />} />
-            <Route path="/gameroom/:roomId" element={<GameRoom />} />
+            <Route path="/gameroom/:roomId" element={<PlatformGameRoom />} />
             <Route path="/game/:roomId" element={<GamePage />} />
             <Route path="/host-monitor/:roomId" element={<HostGameMonitor />} />
             <Route path="/waitingroom/:roomId" element={<WaitingRoom />} />
+            <Route path="/platform-waiting/:roomId" element={<PlatformWaitingRoom />} />
         </Routes>
         </Layout>
       </Router>

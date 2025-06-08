@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- 小豬頭像 - 吉卜力風格 -->
+  <defs>
+    <radialGradient id="pigBodyGradient" cx="0.3" cy="0.3">
+      <stop offset="0%" stop-color="#FFB6C1"/>
+      <stop offset="100%" stop-color="#FF91A4"/>
+    </radialGradient>
+    <radialGradient id="pigBellyGradient" cx="0.3" cy="0.3">
+      <stop offset="0%" stop-color="#FFF0F5"/>
+      <stop offset="100%" stop-color="#FFE4E1"/>
+    </radialGradient>
+  </defs>
+  
+  <!-- 身體 -->
+  <ellipse cx="50" cy="65" rx="30" ry="25" fill="url(#pigBodyGradient)"/>
+  
+  <!-- 肚子 -->
+  <ellipse cx="50" cy="70" rx="20" ry="18" fill="url(#pigBellyGradient)"/>
+  
+  <!-- 頭部 -->
+  <circle cx="50" cy="45" r="22" fill="url(#pigBodyGradient)"/>
+  
+  <!-- 豬鼻子 -->
+  <ellipse cx="50" cy="50" rx="8" ry="6" fill="url(#pigBodyGradient)"/>
+  <ellipse cx="47" cy="50" rx="2" ry="1.5" fill="#000"/>
+  <ellipse cx="53" cy="50" rx="2" ry="1.5" fill="#000"/>
+  
+  <!-- 小耳朵 -->
+  <path d="M 35 35 L 32 28 L 42 32 Z" fill="url(#pigBodyGradient)"/>
+  <path d="M 58 32 L 68 28 L 65 35 Z" fill="url(#pigBodyGradient)"/>
+  
+  <!-- 眼睛 -->
+  <circle cx="42" cy="40" r="4" fill="#000"/>
+  <circle cx="58" cy="40" r="4" fill="#000"/>
+  <circle cx="43" cy="38" r="1.5" fill="#FFF"/>
+  <circle cx="59" cy="38" r="1.5" fill="#FFF"/>
+  
+  <!-- 嘴巴 -->
+  <path d="M 44 56 Q 50 59 56 56" stroke="#000" stroke-width="1.5" fill="none"/>
+  
+  <!-- 捲曲尾巴 -->
+  <path d="M 75 70 Q 80 65 78 75 Q 76 80 82 78" stroke="url(#pigBodyGradient)" stroke-width="4" fill="none"/>
+  
+  <!-- 腳掌 -->
+  <ellipse cx="38" cy="85" rx="6" ry="8" fill="url(#pigBodyGradient)"/>
+  <ellipse cx="62" cy="85" rx="6" ry="8" fill="url(#pigBodyGradient)"/>
+  
+  <!-- 蹄子 -->
+  <ellipse cx="36" cy="88" rx="2" ry="3" fill="#8B4513"/>
+  <ellipse cx="40" cy="88" rx="2" ry="3" fill="#8B4513"/>
+  <ellipse cx="60" cy="88" rx="2" ry="3" fill="#8B4513"/>
+  <ellipse cx="64" cy="88" rx="2" ry="3" fill="#8B4513"/>
+</svg>

@@ -1,0 +1,209 @@
+<svg width="400" height="300" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
+  <!-- 背景天空 -->
+  <defs>
+    <linearGradient id="partyGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stopColor="#FFB6C1" />
+      <stop offset="50%" stopColor="#FFA07A" />
+      <stop offset="100%" stopColor="#98FB98" />
+    </linearGradient>
+    <radialGradient id="sunGradient" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stopColor="#FFD700" />
+      <stop offset="100%" stopColor="#FFA500" />
+    </radialGradient>
+  </defs>
+  
+  <!-- 背景 -->
+  <rect width="400" height="300" fill="url(#partyGradient)" />
+  
+  <!-- 太陽 -->
+  <circle cx="350" cy="50" r="30" fill="url(#sunGradient)" />
+  
+  <!-- 雲朵 -->
+  <ellipse cx="80" cy="40" rx="25" ry="15" fill="white" opacity="0.9" />
+  <ellipse cx="200" cy="30" rx="30" ry="18" fill="white" opacity="0.9" />
+  <ellipse cx="300" cy="45" rx="20" ry="12" fill="white" opacity="0.9" />
+  
+  <!-- 房子 -->
+  <rect x="120" y="180" width="160" height="80" fill="#DEB887" />
+  <polygon points="120,180 200,130 280,180" fill="#8B4513" />
+  <rect x="140" y="200" width="20" height="35" fill="#654321" />
+  <rect x="180" y="190" width="25" height="25" fill="#87CEEB" />
+  <rect x="220" y="190" width="25" height="25" fill="#87CEEB" />
+  
+  <!-- 煙囪冒煙 -->
+  <rect x="250" y="140" width="8" height="25" fill="#8B4513" />
+  <ellipse cx="254" cy="135" rx="3" ry="2" fill="white" opacity="0.7" />
+  <ellipse cx="256" cy="130" rx="4" ry="3" fill="white" opacity="0.6" />
+  <ellipse cx="258" cy="125" rx="5" ry="4" fill="white" opacity="0.5" />
+  
+  <!-- 樹木 -->
+  <rect x="50" y="220" width="12" height="40" fill="#8B4513" />
+  <circle cx="56" cy="210" r="20" fill="#228B22" />
+  <rect x="320" y="210" width="15" height="50" fill="#8B4513" />
+  <circle cx="327" cy="200" r="25" fill="#32CD32" />
+  
+  <!-- 彩帶裝飾 -->
+  <path d="M 0 100 Q 50 80 100 100 T 200 100 T 300 100 T 400 100" stroke="#FF69B4" strokeWidth="3" fill="none" />
+  <path d="M 0 120 Q 50 140 100 120 T 200 120 T 300 120 T 400 120" stroke="#9370DB" strokeWidth="3" fill="none" />
+  
+  <!-- 氣球 -->
+  <ellipse cx="90" cy="90" rx="8" ry="12" fill="#FF1493" />
+  <line x1="90" y1="102" x2="90" y2="115" stroke="black" strokeWidth="1" />
+  <ellipse cx="110" cy="85" rx="8" ry="12" fill="#00CED1" />
+  <line x1="110" y1="97" x2="110" y2="110" stroke="black" strokeWidth="1" />
+  <ellipse cx="130" cy="88" rx="8" ry="12" fill="#FFD700" />
+  <line x1="130" y1="100" x2="130" y2="113" stroke="black" strokeWidth="1" />
+  
+  <!-- 動物們參加派對 -->
+  
+  <!-- 龍貓 (Totoro) -->
+  <ellipse cx="80" cy="240" rx="15" ry="20" fill="#808080" />
+  <circle cx="80" cy="225" r="12" fill="#808080" />
+  <ellipse cx="75" cy="220" rx="3" ry="6" fill="#808080" />
+  <ellipse cx="85" cy="220" rx="3" ry="6" fill="#808080" />
+  <circle cx="77" cy="223" r="2" fill="black" />
+  <circle cx="83" cy="223" r="2" fill="black" />
+  <ellipse cx="80" cy="227" rx="2" ry="1" fill="black" />
+  <!-- 龍貓的帽子 -->
+  <polygon points="70,215 80,205 90,215" fill="#FF6347" />
+  
+  <!-- 黑貓 Jiji -->
+  <ellipse cx="150" cy="250" rx="12" ry="8" fill="black" />
+  <circle cx="150" cy="240" r="8" fill="black" />
+  <polygon points="145,235 148,230 151,235" fill="black" />
+  <polygon points="149,235 152,230 155,235" fill="black" />
+  <circle cx="147" cy="238" r="1" fill="#FFD700" />
+  <circle cx="153" cy="238" r="1" fill="#FFD700" />
+  <!-- 黑貓的蝴蝶結 -->
+  <polygon points="145,232 150,228 155,232 150,235" fill="#FF69B4" />
+  
+  <!-- 狐狸 -->
+  <ellipse cx="220" cy="250" rx="14" ry="10" fill="#FF8C00" />
+  <circle cx="220" cy="238" r="10" fill="#FF8C00" />
+  <polygon points="215,232 218,228 221,232" fill="#FF8C00" />
+  <polygon points="219,232 222,228 225,232" fill="#FF8C00" />
+  <circle cx="217" cy="236" r="1" fill="black" />
+  <circle cx="223" cy="236" r="1" fill="black" />
+  <polygon points="220,238 218,240 222,240" fill="black" />
+  <!-- 狐狸的尾巴 -->
+  <ellipse cx="235" cy="245" rx="8" ry="15" fill="#FF8C00" transform="rotate(30 235 245)" />
+  
+  <!-- 兔子 -->
+  <ellipse cx="290" cy="250" rx="10" ry="8" fill="white" />
+  <circle cx="290" cy="240" r="7" fill="white" />
+  <ellipse cx="287" cy="235" rx="2" ry="6" fill="white" />
+  <ellipse cx="293" cy="235" rx="2" ry="6" fill="white" />
+  <circle cx="288" cy="238" r="1" fill="black" />
+  <circle cx="292" cy="238" r="1" fill="black" />
+  <ellipse cx="290" cy="241" rx="1" ry="0.5" fill="#FF69B4" />
+  <!-- 兔子的花環 -->
+  <circle cx="285" cy="232" r="2" fill="#FF1493" />
+  <circle cx="290" cy="230" r="2" fill="#9370DB" />
+  <circle cx="295" cy="232" r="2" fill="#FFD700" />
+  
+  <!-- 熊 -->
+  <ellipse cx="350" cy="250" rx="16" ry="12" fill="#8B4513" />
+  <circle cx="350" cy="235" r="12" fill="#8B4513" />
+  <circle cx="345" cy="230" r="4" fill="#8B4513" />
+  <circle cx="355" cy="230" r="4" fill="#8B4513" />
+  <circle cx="347" cy="233" r="1" fill="black" />
+  <circle cx="353" cy="233" r="1" fill="black" />
+  <ellipse cx="350" cy="237" rx="2" ry="1" fill="black" />
+  <!-- 熊的領結 -->
+  <polygon points="345,240 350,237 355,240 350,243" fill="#FF0000" />
+  
+  <!-- 貓頭鷹 -->
+  <ellipse cx="40" cy="180" rx="12" ry="15" fill="#DEB887" />
+  <circle cx="40" cy="170" r="10" fill="#DEB887" />
+  <circle cx="37" cy="168" r="3" fill="white" />
+  <circle cx="43" cy="168" r="3" fill="white" />
+  <circle cx="37" cy="168" r="1" fill="black" />
+  <circle cx="43" cy="168" r="1" fill="black" />
+  <polygon points="40,172 38,174 42,174" fill="#FFA500" />
+  <!-- 貓頭鷹的派對帽 -->
+  <polygon points="35,165 40,155 45,165" fill="#9370DB" />
+  <circle cx="40" cy="155" r="2" fill="#FFD700" />
+  
+  <!-- 松鼠 -->
+  <ellipse cx="370" cy="180" rx="8" ry="6" fill="#D2691E" />
+  <circle cx="370" cy="172" r="5" fill="#D2691E" />
+  <circle cx="368" cy="170" r="1" fill="black" />
+  <circle cx="372" cy="170" r="1" fill="black" />
+  <!-- 松鼠的大尾巴 -->
+  <ellipse cx="380" cy="175" rx="6" ry="12" fill="#D2691E" transform="rotate(45 380 175)" />
+  <!-- 松鼠拿著堅果 -->
+  <ellipse cx="365" cy="175" rx="2" ry="3" fill="#8B4513" />
+  
+  <!-- 小豬 -->
+  <ellipse cx="180" cy="270" rx="14" ry="10" fill="#FFB6C1" />
+  <circle cx="180" cy="258" r="9" fill="#FFB6C1" />
+  <circle cx="177" cy="256" r="1" fill="black" />
+  <circle cx="183" cy="256" r="1" fill="black" />
+  <ellipse cx="180" cy="260" rx="3" ry="2" fill="#FF69B4" />
+  <circle cx="178" cy="260" r="0.5" fill="black" />
+  <circle cx="182" cy="260" r="0.5" fill="black" />
+  <!-- 小豬的派對帽 -->
+  <polygon points="175,252 180,242 185,252" fill="#00CED1" />
+  
+  <!-- 刺蝟 -->
+  <ellipse cx="250" cy="270" rx="10" ry="7" fill="#8B4513" />
+  <circle cx="250" cy="262" r="6" fill="#D2B48C" />
+  <circle cx="248" cy="260" r="1" fill="black" />
+  <circle cx="252" cy="260" r="1" fill="black" />
+  <!-- 刺蝟的刺 -->
+  <line x1="245" y1="265" x2="242" y2="262" stroke="#8B4513" strokeWidth="1" />
+  <line x1="247" y1="267" x2="244" y2="264" stroke="#8B4513" strokeWidth="1" />
+  <line x1="253" y1="267" x2="256" y2="264" stroke="#8B4513" strokeWidth="1" />
+  <line x1="255" y1="265" x2="258" y2="262" stroke="#8B4513" strokeWidth="1" />
+  
+  <!-- 小鳥們 -->
+  <ellipse cx="120" cy="150" rx="4" ry="3" fill="#FFD700" />
+  <circle cx="120" cy="148" r="2" fill="#FFD700" />
+  <polygon points="118,148 116,149 118,150" fill="#FFA500" />
+  
+  <ellipse cx="280" cy="140" rx="4" ry="3" fill="#FF69B4" />
+  <circle cx="280" cy="138" r="2" fill="#FF69B4" />
+  <polygon points="278,138 276,139 278,140" fill="#FF1493" />
+  
+  <!-- 蝴蝶們 -->
+  <ellipse cx="160" cy="120" rx="3" ry="2" fill="#9370DB" transform="rotate(15 160 120)" />
+  <ellipse cx="160" cy="120" rx="3" ry="2" fill="#8A2BE2" transform="rotate(-15 160 120)" />
+  <line x1="160" y1="118" x2="160" y2="122" stroke="black" strokeWidth="1" />
+  
+  <ellipse cx="240" cy="110" rx="3" ry="2" fill="#FF1493" transform="rotate(20 240 110)" />
+  <ellipse cx="240" cy="110" rx="3" ry="2" fill="#FF69B4" transform="rotate(-20 240 110)" />
+  <line x1="240" y1="108" x2="240" y2="112" stroke="black" strokeWidth="1" />
+  
+  <!-- 花朵裝飾 -->
+  <circle cx="30" cy="280" r="4" fill="#FF69B4" />
+  <circle cx="26" cy="276" r="3" fill="#FF1493" />
+  <circle cx="34" cy="276" r="3" fill="#FF1493" />
+  <circle cx="26" cy="284" r="3" fill="#FF1493" />
+  <circle cx="34" cy="284" r="3" fill="#FF1493" />
+  
+  <circle cx="370" cy="280" r="4" fill="#9370DB" />
+  <circle cx="366" cy="276" r="3" fill="#8A2BE2" />
+  <circle cx="374" cy="276" r="3" fill="#8A2BE2" />
+  <circle cx="366" cy="284" r="3" fill="#8A2BE2" />
+  <circle cx="374" cy="284" r="3" fill="#8A2BE2" />
+  
+  <circle cx="200" cy="285" r="4" fill="#FFD700" />
+  <circle cx="196" cy="281" r="3" fill="#FFA500" />
+  <circle cx="204" cy="281" r="3" fill="#FFA500" />
+  <circle cx="196" cy="289" r="3" fill="#FFA500" />
+  <circle cx="204" cy="289" r="3" fill="#FFA500" />
+  
+  <!-- 音符 -->
+  <ellipse cx="100" cy="160" rx="2" ry="3" fill="black" />
+  <line x1="102" y1="160" x2="102" y2="150" stroke="black" strokeWidth="2" />
+  <ellipse cx="105" cy="148" rx="3" ry="2" fill="black" />
+  
+  <ellipse cx="320" cy="170" rx="2" ry="3" fill="black" />
+  <line x1="322" y1="170" x2="322" y2="160" stroke="black" strokeWidth="2" />
+  <ellipse cx="325" cy="158" rx="3" ry="2" fill="black" />
+  
+  <!-- 星星裝飾 -->
+  <polygon points="60,60 62,66 68,66 63,70 65,76 60,72 55,76 57,70 52,66 58,66" fill="#FFD700" />
+  <polygon points="340,80 342,86 348,86 343,90 345,96 340,92 335,96 337,90 332,86 338,86" fill="#FFD700" />
+  <polygon points="20,140 22,146 28,146 23,150 25,156 20,152 15,156 17,150 12,146 18,146" fill="#FFD700" />
+</svg>

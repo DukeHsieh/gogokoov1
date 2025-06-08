@@ -4,9 +4,10 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"gaming-platform/core/websocket"
 	"gaming-platform/platform/api"
+
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
