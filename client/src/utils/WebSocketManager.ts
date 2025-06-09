@@ -1,5 +1,20 @@
 import API_CONFIG from '../config/api';
 
+export interface GameMessage {
+  type: string;
+  data?: any;
+  timestamp?: number;
+  messageId?: string;
+}
+
+export interface GameState {
+  isActive: boolean;
+  gameType?: string;
+  roomId?: string;
+}
+
+export type HandlerType = 'platform' | 'game';
+
 interface WebSocketGameState {
   isGameActive: boolean;
   roomId: string | null;
@@ -16,7 +31,8 @@ class WebSocketManager {
     playerNickname: null,
     isHost: false
   };
-  private messageHandlers: Map<string, (message: any) => void> = new Map();
+  private platformHandlers: Map<string, (message: any) => void> = new Map();
+  private gameHandlers: Map<string, (message: any) => void> = new Map();
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectDelay = 1000;
@@ -118,7 +134,7 @@ class WebSocketManager {
           console.log('[WebSocketManager] Processing message:', message);
           
           // 處理遊戲狀態變化
-          if (message.type === 'gameStarted') {
+          if (message.type === 'platformGameStarted') {
             this.gameState.isGameActive = true;
             console.log('[WebSocketManager] Game started - connection locked');
           } else if (message.type === 'gameEnded') {
@@ -126,14 +142,37 @@ class WebSocketManager {
             console.log('[WebSocketManager] Game ended - connection unlocked');
           }
           
-          // 分發消息給註冊的處理器
-          this.messageHandlers.forEach((handler, key) => {
-            try {
-              handler(message);
-            } catch (error) {
-              console.error(`[WebSocketManager] Error in message handler ${key}:`, error);
-            }
-          });
+          // Route messages to appropriate handlers based on type prefix
+          console.log('[WebSocketManager] Routing message type:', message.type);
+          if (message.type.startsWith('platform')) {
+            this.platformHandlers.forEach((handler) => {
+              try {
+                console.log('[WebSocketManager] Sending to platform handler:', message.type);
+                handler(message);
+              } catch (error) {
+                console.error('Error in platform handler:', error);
+              }
+            });
+          } else if (message.type.startsWith('game')) {
+            this.gameHandlers.forEach((handler) => {
+              try {
+                console.log('[WebSocketManager] Sending to game handler:', message.type);
+                handler(message);
+              } catch (error) {
+                console.error('Error in game handler:', error);
+              }
+            });
+          } else {
+            // For backward compatibility, send to both handlers
+            [...this.platformHandlers.values(), ...this.gameHandlers.values()].forEach((handler) => {
+              try {
+                console.log('[WebSocketManager] Sending to both handlers:', message.type);
+                handler(message);
+              } catch (error) {
+                console.error('Error in message handler:', error);
+              }
+            });
+          }
         } catch (error) {
           console.error('[WebSocketManager] Error parsing message:', error);
         }
@@ -182,12 +221,28 @@ class WebSocketManager {
     return false;
   }
 
-  public addMessageHandler(key: string, handler: (message: any) => void): void {
-    this.messageHandlers.set(key, handler);
+  public addMessageHandler(key: string, handler: (message: any) => void, type: HandlerType = 'game'): void {
+    if (type === 'platform') {
+      this.platformHandlers.set(key, handler);
+    } else {
+      this.gameHandlers.set(key, handler);
+    }
   }
 
-  public removeMessageHandler(key: string): void {
-    this.messageHandlers.delete(key);
+  public removeMessageHandler(key: string, type?: HandlerType): void {
+    if (type === 'platform') {
+      this.platformHandlers.delete(key);
+    } else if (type === 'game') {
+      this.gameHandlers.delete(key);
+    } else {
+      // Remove from both if type not specified
+      this.platformHandlers.delete(key);
+      this.gameHandlers.delete(key);
+    }
+  }
+
+  public removeAllGameHandlers(): void {
+    this.gameHandlers.clear();
   }
 
   public disconnect(): void {
@@ -203,7 +258,8 @@ class WebSocketManager {
         playerNickname: null,
         isHost: false
       };
-      this.messageHandlers.clear();
+      this.platformHandlers.clear();
+      this.gameHandlers.clear();
       console.log('[WebSocketManager] Disconnected');
     } else {
       console.warn('[WebSocketManager] Cannot disconnect while game is active');
@@ -222,7 +278,8 @@ class WebSocketManager {
       playerNickname: null,
       isHost: false
     };
-    this.messageHandlers.clear();
+    this.platformHandlers.clear();
+    this.gameHandlers.clear();
     console.log('[WebSocketManager] Force disconnected');
   }
 

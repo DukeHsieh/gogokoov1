@@ -1,8 +1,10 @@
-// 遊戲模組主要導出
+// 遊戲模組統一導出
+
 // 記憶卡片遊戲
 export * from './memory-card';
 
-// 未來可以在這裡添加其他遊戲模組
-// export * from './puzzle-game';
-// export * from './word-game';
-// export * from './trivia-game';
+// 搶紅包遊戲
+export * from './red-envelope';
+
+// 其他遊戲可以在這裡添加
+// export * from './other-game';

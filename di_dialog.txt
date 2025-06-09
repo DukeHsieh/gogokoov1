@@ -1,0 +1,49 @@
+
+
+message.type中的gameStarted 全改為 platformGameStarted,
+請修改client server中相關處理的程式
+
+幫我client網路程式重構，websocketmanager的handler有兩種，
+一種handler是 platform-handler,一種是 game-handler,
+host player 都是擁有兩個handler,
+player在joingame頁面是就要產生好connection, 並註冊 platform-handler,然後進入waitingroom,
+platform-handler收到gamestarted時，會先移除所有的game-handler, 然後再進入指定的遊戲，並註冊game-handler,
+server傳來的訊息，platform-handler game-handler 都會收到, 兩邊處理的message type都會加上platform或game的前字串,
+主持人host的handler也參照player的觀念修改,
+請一起並修改server相關的網路程式。
+
+
+各遊戲註冊接收網路回傳訊息的地方在哪幾行程式？
+我要註冊的地方與處理邏輯，不是處理的地方
+每個遊戲都註冊，如何確保一次只有一個遊戲取得 遊戲進行中的訊息？
+websocketmanager收到遊戲訊息分發給對應handler的程式在哪幾行？
+
+
+我希望正確的流程是：房間管理與websocket都屬於platform, game目錄下的程式不會有產生房間或是產生連線的程式碼，
+請幫我分析platform目錄程式與memory遊戲中，房間管理與websocket的建立與管理流程，
+了解目前不管是如何切換遊戲，房間號碼與websocket都不會改變。
+
+memory player目錄下的joingame waitingroom不需要了，玩家加入房間與等待遊戲開始的部分，
+都已經移到一開始的步驟，也就是這兩個檔案的處理屬於平台了。
+player在遊戲目錄下，只要專注在遊戲本身就可以，也就是memory player目錄下只放跟卡片記憶相關的程式。
+請移除這兩個程式，並做相關的路徑處理，確保卡片記憶遊戲可以正常進行。 
+
+明天處理
+重構client端 平台與兩個遊戲的程式目錄與檔案，平台負責房間與連線管理，
+兩個遊戲玩家部分，都不需要處理任何重新連線的程式，連線與房間都是在平台下，
+玩家在waitingpage時，會決定要進去哪個遊戲，由gameStarted時的gametype決定，
+進入相對應的遊戲後，就直接開始遊戲，直到結束。
+遊戲結束後 等server通知 再回到waitingpage 準備下一個遊戲。
+
+
+gamecontrol 參考memorycardgame, 使用 useWebSocketHandler 來設定訊息處理，
+不用檢查webconn, 也不用重新連線，只要使用暫存下來的 webconn
+
+
+在red-envelope目錄下有一個 redenvelopegame.tsx, 在components下也有一個 redenvelopegame.tsx，
+這兩個檔案有什麼不同？為什麼要產生兩個檔案？
+
+修改red-envelope目錄下的 redenvelopegame.tsx, 改成gamecontrol會好一點，也做一個區隔。
+這個檔案內的程式有錯誤，不需要重新建立新的connection，使用之間房間建好的connn,
+利用原來的conn處理 網路訊息，跟server確認訊息處理正確。
+另外，進入redenvelopegame 之後 就不需要再等待遊戲開始，遊戲可以直接開始，移除等待遊戲開始的程式。

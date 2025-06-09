@@ -54,7 +54,14 @@ func handleScoreUpdate(gameRoom *core.Room, client *core.Client, message core.Me
 		client.Score = int(score)
 		log.Printf("[MEMORY] Updated score for %s: %d", client.Nickname, client.Score)
 
-		// Broadcast score update to all clients
+		// Broadcast game score update to all clients
+		room.BroadcastToRoom(gameRoom, map[string]interface{}{
+			"type":   "gameScoreUpdate",
+			"player": client.Nickname,
+			"score":  client.Score,
+		})
+		
+		// Also send legacy scoreUpdate for backward compatibility
 		room.BroadcastToRoom(gameRoom, map[string]interface{}{
 			"type":   "scoreUpdate",
 			"player": client.Nickname,
@@ -67,8 +74,6 @@ func handleScoreUpdate(gameRoom *core.Room, client *core.Client, message core.Me
 		log.Printf("[MEMORY] Ignoring score update for host player %s", client.Nickname)
 	}
 }
-
-
 
 // SendGameState sends the current memory game state to a client
 func SendGameState(client *core.Client, gameRoom *core.Room) {
@@ -91,7 +96,7 @@ func SendGameState(client *core.Client, gameRoom *core.Room) {
 
 	// Send game state to client
 	response := map[string]interface{}{
-		"type":     "gameState",
+		"type":     "gameData",
 		"gameData": gameData,
 		"gameTime": gameRoom.GameTime,
 		"players":  getPlayerList(gameRoom),
@@ -147,7 +152,7 @@ func HandleHostStartGame(gameRoom *core.Room, client *core.Client, msgData map[s
 	}
 
 	// Extract game settings from message
-	numPairs := 8 // default value
+	numPairs := 8  // default value
 	gameTime := 60 // default value
 
 	if pairs, ok := msgData["numPairs"].(float64); ok {
@@ -180,7 +185,7 @@ func HandleHostCloseGame(gameRoom *core.Room, client *core.Client) {
 
 	// Broadcast game closed message
 	room.BroadcastToRoom(gameRoom, map[string]interface{}{
-		"type":    "gameClosed",
+		"type":    "gameEnded",
 		"message": "Game was closed by the host",
 	})
 

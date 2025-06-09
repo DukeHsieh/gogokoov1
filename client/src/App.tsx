@@ -3,11 +3,18 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import Layout from './components/Layout';
 // Platform/System pages
-import { Home, GameList, Login, Register, CreateRoom, GameRoom as PlatformGameRoom, JoinGame as PlatformJoinGame, WaitingRoom as PlatformWaitingRoom } from './platform';
+import { Home, Login, Register } from './platform';
+// 从各个独立文件中导入组件
+import CreateRoom from './platform/host/CreateRoom';
+import GameList from './platform/host/GameList';
+import GameRoom from './platform/host/GameRoom';
+import { JoinGame as PlatformJoinGame, WaitingRoom as PlatformWaitingRoom } from './platform/player';
 
 // Game-related pages
-import { HostGameMonitor, CreateGame, JoinGame } from './games';
+import { HostGameMonitor, CreateGame } from './games';
 import { GamePage } from './games/memory-card';
+import { CreateRedEnvelopeGame, RedEnvelopeHostGameMonitor } from './games/red-envelope';
+import GameControl from './games/red-envelope/GameControl';
 
 const theme = createTheme({
   palette: {
@@ -53,13 +60,16 @@ function App() {
             <Route path="/games" element={<GameList />} />
             <Route path="/create-room" element={<CreateRoom />} />
             <Route path="/creategame" element={<CreateGame />} />
+            <Route path="/games/red-envelope/create" element={<CreateRedEnvelopeGame />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/join/:roomId" element={<PlatformJoinGame />} />
 
-            <Route path="/gameroom/:roomId" element={<PlatformGameRoom />} />
+            <Route path="/gameroom/:roomId" element={<GameRoom />} />
             <Route path="/game/:roomId" element={<GamePage />} />
             <Route path="/games/memory-card/host/:roomId" element={<HostGameMonitor />} />
+            <Route path="/games/red-envelope/host/:roomId" element={<RedEnvelopeHostGameMonitor />} />
+            <Route path="/games/red-envelope/game/:roomId" element={<GameControl />} />
             <Route path="/host-monitor/:roomId" element={<HostGameMonitor />} />
             <Route path="/platform-waiting/:roomId" element={<PlatformWaitingRoom />} />
         </Routes>

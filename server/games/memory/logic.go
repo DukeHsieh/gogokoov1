@@ -159,7 +159,13 @@ func StartMemoryGame(gameRoom *core.Room, numPairs int, gameTime int) {
 			select {
 			case <-gameRoom.Timer.C:
 				gameRoom.GameTime--
-				// Broadcast time update every second
+				// Broadcast game time update every second
+				room.BroadcastToRoom(gameRoom, map[string]interface{}{
+					"type":     "gameTimeUpdate",
+					"timeLeft": gameRoom.GameTime,
+				})
+				
+				// Also send legacy timeUpdate for backward compatibility
 				room.BroadcastToRoom(gameRoom, map[string]interface{}{
 					"type":     "timeUpdate",
 					"timeLeft": gameRoom.GameTime,
@@ -189,7 +195,8 @@ func StartMemoryGame(gameRoom *core.Room, numPairs int, gameTime int) {
 
 	// Broadcast game start to all clients with game parameters only
 	room.BroadcastToRoom(gameRoom, map[string]interface{}{
-		"type":     "gameStarted",
+		"type":     "platformGameStarted",
+		"gameType": "memory",
 		"gameData": clientGameData,
 		"message":  "Memory game started!",
 	})

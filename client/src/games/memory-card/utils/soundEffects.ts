@@ -1,5 +1,5 @@
 // 卡片記憶遊戲音效管理
-import type { SoundEffects } from '../types';
+import type { SoundEffects } from './types';
 
 // 音效播放函數
 const playSound = (frequency: number, duration: number, type: 'sine' | 'square' | 'triangle' = 'sine') => {

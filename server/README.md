@@ -94,7 +94,7 @@ PORT=8080 GIN_MODE=debug go run .
 ### Server to Client
 
 - `playerListUpdate` - Updated player list
-- `gameStarted` - Game has started
+- `platformGameStarted` - Game has started
 - `gameData` - Game state data
 - `cardFlipped` - Card was flipped
 - `cardsMatched` - Cards matched

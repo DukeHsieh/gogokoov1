@@ -1,21 +1,16 @@
-// 記憶卡片遊戲模組主要導出
-export { MemoryCardGame } from './components/MemoryCardGame';
-export { default as GamePage } from './GamePage';
-export { MemoryCard } from './components/MemoryCard';
-export { GameStatus } from './components/GameStatus';
-export { CardGrid } from './components/CardGrid';
+// 主要遊戲頁面
+export { GamePage } from './player';
+export { MemoryCardGame, MemoryCard, GameStatus, CardGrid } from './player';
 
 // 遊戲頁面組件
-export { default as CreateGame } from './CreateGame';
-export { default as JoinGame } from './JoinGame';
+export { CreateGame, HostGameMonitor } from './host';
 
-export { default as HostGameMonitor } from './HostGameMonitor';
 
-export { useGameState } from './hooks/useGameState';
-export { useWebSocketHandler } from './hooks/useWebSocketHandler';
-export { useGameTimer } from './hooks/useGameTimer';
+export { useGameState } from './utils/useGameState';
+export { useWebSocketHandler } from './utils/useWebSocketHandler';
+export { useGameTimer } from './utils/useGameTimer';
 
-export { generateCards, formatTime } from './utils/cardGenerator';
+export { generateCards, formatTime } from './player/cardGenerator';
 export { soundEffects } from './utils/soundEffects';
 
 export type {
@@ -26,4 +21,4 @@ export type {
   Player,
   GameMessage,
   SoundEffects
-} from './types';
+} from './utils/types';
