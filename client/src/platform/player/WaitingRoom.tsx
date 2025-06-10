@@ -158,6 +158,11 @@ const WaitingRoom: React.FC<WaitingRoomProps> = () => {
   const location = useLocation();
   const [playerCount, setPlayerCount] = useState(1);
   const [roomName, setRoomName] = useState('遊戲房間');
+  const [currentGameState, setCurrentGameState] = useState<{
+    gameType: string | null;
+    roomId: string | null;
+    isInGame: boolean;
+  }>({ gameType: null, roomId: null, isInGame: false });
   
   // 從路由狀態中獲取玩家信息
   const { isHost = false, playerNickname = '玩家' } = location.state || {};
@@ -183,6 +188,20 @@ const WaitingRoom: React.FC<WaitingRoomProps> = () => {
     // 註冊platform handler來處理等待室的消息
     const wsManager = WebSocketManager.getInstance();
     
+    // 檢查 WebSocketManager 的遊戲狀態，確保狀態同步
+    const wsGameState = wsManager.getGameState();
+    if (wsGameState.isGameActive && wsGameState.roomId === roomId) {
+      console.log('[WaitingRoom] 檢測到已有活躍遊戲狀態，同步本地狀態', {
+        gameType: wsGameState.gameType,
+        roomId: wsGameState.roomId
+      });
+      setCurrentGameState({
+        gameType: wsGameState.gameType,
+        roomId: wsGameState.roomId,
+        isInGame: true
+      });
+    }
+    
     wsManager.addMessageHandler('waiting-room-platform', (message) => {
       console.log('[WaitingRoom Platform Handler] Received message:', message);
       
@@ -198,30 +217,79 @@ const WaitingRoom: React.FC<WaitingRoomProps> = () => {
         case 'platformGameStarted':
           console.log('Game starting...', message);
           
+          const gameType = message.data?.gameType || message.gameType;
+          const gameData = message.data?.gameData || message.gameData;
+          
+          // 檢查是否已經在同一個遊戲中
+          if (currentGameState.isInGame && 
+              currentGameState.gameType === gameType && 
+              currentGameState.roomId === roomId) {
+            console.log(`[WaitingRoom] 已經擋下重複進入 - 玩家已在遊戲中:`, {
+              currentGameType: currentGameState.gameType,
+              newGameType: gameType,
+              roomId: roomId,
+              playerNickname: playerNickname
+            });
+            return;
+          }
+          
+          // 更新目前遊戲狀態
+          setCurrentGameState({
+            gameType: gameType,
+            roomId: roomId,
+            isInGame: true
+          });
+          
+          console.log(`[WaitingRoom] 進入遊戲:`, {
+            gameType: gameType,
+            roomId: roomId,
+            playerNickname: playerNickname,
+            isHost: isHost,
+            gameData: gameData
+          });
+          
           // 移除所有game handlers
           wsManager.removeAllGameHandlers();
           
-          const gameType = message.data?.gameType || message.gameType;
-          
           if (gameType === 'memory') {
             navigate(`/game/${roomId}`, {
-              state: { playerNickname, isHost }
+              state: { 
+                playerNickname, 
+                isHost, 
+                gameData: gameData,
+                gameSettings: gameData?.gameSettings 
+              }
             });
           } else if (gameType === 'redenvelope') {
             if (isHost) {
               navigate(`/games/red-envelope/host/${roomId}`, {
-                state: { playerNickname, isHost }
+                state: { 
+                  playerNickname, 
+                  isHost, 
+                  gameData: gameData,
+                  gameSettings: gameData?.gameSettings 
+                }
               });
             } else {
               navigate(`/games/red-envelope/game/${roomId}`, {
-                state: { playerNickname, isHost }
+                state: { 
+                  playerNickname, 
+                  isHost, 
+                  gameData: gameData,
+                  gameSettings: gameData?.gameSettings 
+                }
               });
             }
           } else {
             // 預設導向記憶卡遊戲
             console.warn('Unknown game type:', gameType, 'defaulting to memory game');
             navigate(`/game/${roomId}`, {
-              state: { playerNickname, isHost }
+              state: { 
+                playerNickname, 
+                isHost, 
+                gameData: gameData,
+                gameSettings: gameData?.gameSettings 
+              }
             });
           }
           break;
@@ -234,6 +302,8 @@ const WaitingRoom: React.FC<WaitingRoomProps> = () => {
     return () => {
       // 清理platform handler
       wsManager.removeMessageHandler('waiting-room-platform', 'platform');
+      // 重置遊戲狀態
+      setCurrentGameState({ gameType: null, roomId: null, isInGame: false });
     };
   }, [roomId, navigate, isHost, playerNickname]);
 

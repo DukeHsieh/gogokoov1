@@ -46,17 +46,15 @@ func GetPlayerList(c *gin.Context) {
 		})
 	}
 
-	// Add other clients
-	for client := range gameRoom.Clients {
-		if client != gameRoom.HostClient {
-			players = append(players, core.Player{
-				Nickname: client.Nickname,
-				ID:       fmt.Sprintf("%p", client.Conn),
-				IsHost:   false,
-				Score:    client.Score,
-				Avatar:   client.Avatar,
-			})
-		}
+	// Add player clients
+	for client := range gameRoom.PlayerClients {
+		players = append(players, core.Player{
+			Nickname: client.Nickname,
+			ID:       fmt.Sprintf("%p", client.Conn),
+			IsHost:   false,
+			Score:    client.Score,
+			Avatar:   client.Avatar,
+		})
 	}
 
 	log.Printf("[API] Returning %d players for room %s", len(players), roomID)

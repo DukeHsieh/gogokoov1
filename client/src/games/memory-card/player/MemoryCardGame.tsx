@@ -1,12 +1,12 @@
 // 記憶卡片遊戲主組件
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { Container, Box, CircularProgress, Typography } from '@mui/material';
 import { useGameState } from '../utils/useGameState';
 import { useWebSocketHandler } from '../utils/useWebSocketHandler';
 import { CardGrid } from './CardGrid';
 import { GameStatus } from './GameStatus';
-import type { GameData, GameSettings, GameState } from '../utils/types';
+import type { GameSettings } from '../utils/types';
 
 interface MemoryCardGameProps {
   roomId?: string;
@@ -25,12 +25,18 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
   const location = useLocation();
   const [waitingForGameData, setWaitingForGameData] = useState(true);
 
-  // 從 URL 參數或 props 獲取值
-  const roomId = propRoomId || paramRoomId;
-  const actualNickname = propPlayerNickname || localStorage.getItem(`player_${roomId}`) || 'Player';
-  const isHost = propIsHost || false;
-  const gameSettings = propGameSettings || (location.state as any)?.gameSettings;
-  const initialAvatar = (location.state as any)?.playerAvatar || 'cat';
+  // 使用 useMemo 來穩定這些值，避免重複渲染
+  const roomId = useMemo(() => propRoomId || paramRoomId, [propRoomId, paramRoomId]);
+  const actualNickname = useMemo(() => {
+    return propPlayerNickname || localStorage.getItem(`player_${roomId}`) || 'Player';
+  }, [propPlayerNickname, roomId]);
+  const isHost = useMemo(() => propIsHost || false, [propIsHost]);
+  const gameSettings = useMemo(() => {
+    return propGameSettings || (location.state as any)?.gameSettings;
+  }, [propGameSettings, location.state]);
+  const initialAvatar = useMemo(() => {
+    return (location.state as any)?.playerAvatar || 'cat';
+  }, [location.state]);
 
   console.log(`[MemoryCardGame] [${new Date().toISOString()}] Component initialized:`, {
     roomId: roomId,
@@ -56,28 +62,22 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
   // 追蹤本地翻轉的卡片（用於動畫效果，使用positionId來精確控制）
   const [localFlippedCards, setLocalFlippedCards] = useState<{ suit: string; value: string; positionId: number }[]>([]);
 
+  // 使用 useCallback 來穩定回調函數
+
+  const onGameStarted = useCallback(() => {
+    console.log('[MemoryCardGame] Game started, waiting for game data...');
+    setWaitingForGameData(true);
+  }, []);
+
   // WebSocket 消息處理
-  const { sendScoreUpdate, isConnected } = useWebSocketHandler({
+  const {
+    sendScoreUpdate
+  } = useWebSocketHandler({
     roomId,
     playerNickname: actualNickname,
     isHost,
-    onGameData: (data: GameData) => {
-      console.log(`[MemoryCardGame] [${new Date().toISOString()}] Received game data:`, {
-        gameSettings: data.gameSettings,
-        cardsCount: data.cards?.length || 0,
-        gameTime: data.gameTime,
-        roomId: roomId,
-        playerNickname: actualNickname
-      });
-      initializeGame(data);
-      console.log(`[MemoryCardGame] [${new Date().toISOString()}] Game initialized, setting waitingForGameData to false`);
-      setWaitingForGameData(false);
-    },
-    onGameStarted: () => {
-      console.log('[MemoryCardGame] Game started, waiting for game data...');
-      setWaitingForGameData(true);
-    },
-    onGameEnded: (data: any) => {
+    onGameStarted,
+    onGameEnded: useCallback((data: any) => {
       console.log(`[MemoryCardGame] [${new Date().toISOString()}] Game ended:`, {
         data: data,
         roomId: roomId,
@@ -98,8 +98,8 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
         // 如果沒有 finalResults，使用傳統方式
         updateRank(data.rank || 1, data.totalPlayers || 1);
       }
-    },
-    onRankUpdate: (data: any) => {
+    }, [updateGameStatus, updateRank, actualNickname, roomId]),
+    onRankUpdate: useCallback((data: any) => {
       console.log(`[MemoryCardGame] [${new Date().toISOString()}] Rank updated:`, {
         newRank: data.rank,
         totalPlayers: data.totalPlayers,
@@ -109,8 +109,8 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
       });
       updateGameStatus('ended');
       updateRank(data.rank, data.totalPlayers);
-    },
-    onScoreUpdate: (score: number) => {
+    }, [updateGameStatus, updateRank, actualNickname, roomId, gameState.rank]),
+    onScoreUpdate: useCallback((score: number) => {
       console.log(`[MemoryCardGame] [${new Date().toISOString()}] Received score update from server:`, {
         newScore: score,
         currentScore: gameState.score,
@@ -119,8 +119,8 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
       });
       // 更新本地分数状态
       updateScore(score);
-    },
-    onTimeUpdate: (timeLeft: number) => {
+    }, [updateScore, actualNickname, roomId, gameState.score]),
+    onTimeUpdate: useCallback((timeLeft: number) => {
       console.log(`[MemoryCardGame] [${new Date().toISOString()}] Received time update from server:`, {
         timeLeft: timeLeft,
         currentTimeLeft: gameState.timeLeft,
@@ -129,8 +129,8 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
       });
       // 更新本地時間狀態
       updateTimeLeft(timeLeft);
-    },
-    onPlayerListUpdate: (players: any[]) => {
+    }, [updateTimeLeft, actualNickname, roomId, gameState.timeLeft]),
+    onPlayerListUpdate: useCallback((players: any[]) => {
       if (!players || !Array.isArray(players)) {
         console.warn(`[MemoryCardGame] [${new Date().toISOString()}] Received invalid players data:`, players);
         return;
@@ -144,11 +144,11 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
         });
         setPlayerAvatar(currentPlayer.avatar);
       }
-    }
+    }, [actualNickname])
   });
 
   // 客戶端配對檢查機制
-  const checkForMatch = (cards: { suit: string; value: string; positionId: number }[]) => {
+  const checkForMatch = useCallback((cards: { suit: string; value: string; positionId: number }[]) => {
     if (cards.length !== 2) return;
     
     const [card1, card2] = cards;
@@ -198,26 +198,27 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
       setIsProcessing(false);
     } else {
       // 配對失敗：2秒後翻轉回背面
+      console.log(`[MemoryCardGame] [${new Date().toISOString()}] No match, flipping cards back:`, {
+        card1: card1,
+        card2: card2,
+        playerNickname: actualNickname
+      });
+      
       setTimeout(() => {
+        // 移除本地翻轉狀態
         setLocalFlippedCards(prev => prev.filter(lfc => 
           lfc.positionId !== card1.positionId && lfc.positionId !== card2.positionId
         ));
         
-        // 清除選擇狀態和處理狀態
+        // 清除選擇和處理狀態
         setSelectedCards([]);
         setIsProcessing(false);
-        
-        console.log(`[MemoryCardGame] [${new Date().toISOString()}] No match, cards flipped back:`, {
-          card1: card1,
-          card2: card2,
-          playerNickname: actualNickname
-        });
       }, 2000);
     }
-  };
+  }, [actualNickname, roomId, isHost, gameState.score, sendScoreUpdate, setGameState, setLocalFlippedCards, setSelectedCards, setIsProcessing]);
 
   // 處理卡片點擊
-  const handleCardClick = (positionId: number, suit: string, value: string) => {
+  const handleCardClick = useCallback((positionId: number, suit: string, value: string) => {
     console.log(`[MemoryCardGame] [${new Date().toISOString()}] Card clicked:`, {
       positionId: positionId,
       suit: suit,
@@ -352,7 +353,28 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
       setIsProcessing(true);
       checkForMatch(newSelectedCards);
     }
-  };
+  }, [gameState.status, gameState.cards, isProcessing, selectedCards, actualNickname, roomId, checkForMatch]);
+
+  // 使用 gameSettings 初始化遊戲
+  useEffect(() => {
+    if (gameSettings && gameSettings.numPairs) {
+      console.log(`[MemoryCardGame] [${new Date().toISOString()}] Initializing game with gameSettings:`, {
+        gameSettings: gameSettings,
+        roomId: roomId,
+        playerNickname: actualNickname
+      });
+      
+      // 構造符合 GameData 格式的物件
+      const gameData = {
+        gameSettings: gameSettings,
+        gameTime: gameSettings.gameTime || 60,
+        cards: [] // 卡片會在 initializeGame 中生成
+      };
+      
+      initializeGame(gameData);
+      setWaitingForGameData(false);
+    }
+  }, [gameSettings, roomId, actualNickname, initializeGame]);
 
   // 儲存玩家暱稱到 localStorage
   useEffect(() => {
@@ -362,6 +384,7 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
   }, [roomId, actualNickname]);
 
   // 載入狀態
+  console.log(`[MemoryCardGame] waitforgamedata=%s, cards length=%s, gameStatus=%s`, waitingForGameData, gameState.cards.length, gameState.status);
   if (waitingForGameData || gameState.cards.length === 0) {
     console.log(`[MemoryCardGame] [${new Date().toISOString()}] Showing loading state:`, {
       waitingForGameData: waitingForGameData,

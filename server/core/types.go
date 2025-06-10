@@ -32,11 +32,13 @@ type ReconnectionRequest struct {
 	Response chan bool
 }
 
-// Room represents a game room
+// Room represents a game room with separated host and player storage
 type Room struct {
 	ID                string                   `json:"id"`
+	// Separated storage for host and players
 	HostClient        *Client                  `json:"hostClient,omitempty"`
-	Clients           map[*Client]bool         `json:"-"`
+	PlayerClients     map[*Client]bool         `json:"-"` // Only non-host players
+	AllClients        map[*Client]bool         `json:"-"` // All clients for backward compatibility
 	GameTime          int                      `json:"gameTime"`
 	TotalPlayers      int                      `json:"totalPlayers"`
 	PlayersReady      map[string]bool          `json:"playersReady"`

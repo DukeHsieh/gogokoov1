@@ -1,5 +1,28 @@
 
 
+
+取消 MemoryCardGame ongamedata 這個funciton, 
+改用使用進入頁面得到的 gamesettings 來執行ongamedata初始遊戲的程式,
+因為gamedata會從頁面重送過來，
+請修改memorycardgame內的程式，並確保物件資料符合格式
+
+
+player waitingroom 中收到 platformgamestarted 訊息時, 
+先取得gamedata, 然後將gamedata傳送給 進入遊戲的頁面,
+進入memory redenvelope遊戲後，遊戲要從waitingroom 中取得參數,
+請修改相關client server確認程式都正確 
+
+player waitingroom 中收到 platformgamestarted 訊息時, 
+檢查目前player在哪個遊戲內，不要重複進入同一個遊戲，
+新增 目前遊戲 的狀態紀錄，避免重複進入的情況，
+並log已經擋下重複進入
+
+
+server程式我想要大幅修改，將host跟player的連線分開管理，分成兩個儲存體，
+broadcast時候分開，區別主持人得資訊與玩家的資訊，分開重送，避免資訊混淆。
+請修改client server相關程式，確保目前流程正常進行。
+
+
 message.type中的gameStarted 全改為 platformGameStarted,
 請修改client server中相關處理的程式
 

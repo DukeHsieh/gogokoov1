@@ -100,9 +100,15 @@ export const useWebSocketHandler = ({
               
               const gameData = {
                 gameSettings: message.gameData.gameSettings,
-                gameTime: message.gameData.gameTime
+                gameTime: message.gameData.gameTime,
+                cards: message.gameData.cards || []
               };
-              console.log(`[MemoryCardGame] [${new Date().toISOString()}] Calling onGameData with:`, gameData);
+              console.log(`[MemoryCardGame] [${new Date().toISOString()}] Calling onGameData with:`, {
+                hasGameSettings: !!gameData.gameSettings,
+                gameTime: gameData.gameTime,
+                cardsLength: gameData.cards.length,
+                gameData: gameData
+              });
               callbacksRef.current.onGameData?.(gameData);
               break;
               

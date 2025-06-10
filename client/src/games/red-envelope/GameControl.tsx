@@ -14,11 +14,20 @@ const GameControl: React.FC<GameControlProps> = () => {
   const gameState = location.state as any;
   const playerNickname = gameState?.playerNickname || 'Player';
   const isHost = gameState?.isHost || false;
+  const initialGameData = gameState?.gameData;
+  const initialGameSettings = gameState?.gameSettings;
+  
+  console.log('[GameControl] Initial state from WaitingRoom:', {
+    playerNickname,
+    isHost,
+    gameData: initialGameData,
+    gameSettings: initialGameSettings
+  });
   
   const [players, setPlayers] = useState<Player[]>([]);
   const [currentPlayer, setCurrentPlayer] = useState<Player | undefined>();
-  const [gameData, setGameData] = useState<GameData | undefined>();
-  const [waitingForGameData, setWaitingForGameData] = useState(false);
+  const [gameData, setGameData] = useState<GameData | undefined>(initialGameData);
+  const [waitingForGameData, setWaitingForGameData] = useState(!initialGameData);
 
   // 使用 useWebSocketHandler 處理 WebSocket 連接和訊息
   const { sendScoreUpdate, isConnected } = useWebSocketHandler({

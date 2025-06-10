@@ -39,27 +39,27 @@ func HandleMessage(client *core.Client, room *core.Room, msgData []byte) {
 		data, dataOk := msg["data"].(map[string]interface{})
 		if dataOk {
 			if gameType, ok := data["gameType"].(string); ok {
-			switch gameType {
-			case "memory":
-				memory.HandleHostStartGame(room, client, msg)
-			case "redenvelope":
-				// 将消息转换为core.Message格式以处理红包游戏
-				coreMsg := core.Message{
-					Type: "gameStart",
-					Data: msg,
+				switch gameType {
+				case "memory":
+					memory.HandleHostStartGame(room, client, msg)
+				case "redenvelope":
+					// 将消息转换为core.Message格式以处理红包游戏
+					coreMsg := core.Message{
+						Type: "gameStart",
+						Data: msg,
+					}
+					redenvelope.HandleRedEnvelopeGameMessage(room, client, coreMsg)
+				default:
+					log.Printf("[MESSAGE] Unknown game type for hostStartGame: %s", gameType)
 				}
-				redenvelope.HandleRedEnvelopeGameMessage(room, client, coreMsg)
-			default:
-				log.Printf("[MESSAGE] Unknown game type for hostStartGame: %s", gameType)
+			} else {
+				// Default to memory game for backward compatibility if gameType is not specified
+				memory.HandleHostStartGame(room, client, msg)
 			}
 		} else {
-			// Default to memory game for backward compatibility if gameType is not specified
+			// Default to memory game for backward compatibility if msg["data"] is not a map
 			memory.HandleHostStartGame(room, client, msg)
 		}
-	} else {
-		// Default to memory game for backward compatibility if msg["data"] is not a map
-		memory.HandleHostStartGame(room, client, msg)
-	}
 
 	case "notifyPlatformPlayers":
 		// Handle platform player notification
@@ -128,7 +128,7 @@ func SendMessage(client *core.Client, message map[string]interface{}) {
 
 // BroadcastMessage sends a message to all clients in a room
 func BroadcastMessage(room *core.Room, message map[string]interface{}) {
-	for client := range room.Clients {
+	for client := range room.AllClients {
 		SendMessage(client, message)
 	}
 }
@@ -152,16 +152,14 @@ func broadcastPlayerListUpdate(room *core.Room) {
 		})
 	}
 
-	// Add other clients
-	for client := range room.Clients {
-		if client != room.HostClient {
-			players = append(players, core.Player{
-				Nickname: client.Nickname,
-				ID:       client.Nickname,
-				IsHost:   false,
-				Score:    client.Score,
-			})
-		}
+	// Add player clients
+	for client := range room.PlayerClients {
+		players = append(players, core.Player{
+			Nickname: client.Nickname,
+			ID:       client.Nickname,
+			IsHost:   false,
+			Score:    client.Score,
+		})
 	}
 
 	// Send platform message for player list updates
@@ -182,8 +180,13 @@ func broadcastPlayerListUpdate(room *core.Room) {
 		},
 	}
 
-	BroadcastMessage(room, platformPlayerListMsg)
-	BroadcastMessage(room, legacyPlayerListMsg)
+	//BroadcastMessage(room, platformPlayerListMsg)
+	//BroadcastMessage(room, legacyPlayerListMsg)
+	//send message to host
+	if room.HostClient != nil {
+		SendMessage(room.HostClient, legacyPlayerListMsg)
+		SendMessage(room.HostClient, platformPlayerListMsg)
+	}
 }
 
 // handleNotifyPlatformPlayers handles platform player notification

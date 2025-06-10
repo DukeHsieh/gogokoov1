@@ -17,6 +17,7 @@ export type HandlerType = 'platform' | 'game';
 
 interface WebSocketGameState {
   isGameActive: boolean;
+  gameType: string | null;
   roomId: string | null;
   playerNickname: string | null;
   isHost: boolean;
@@ -27,6 +28,7 @@ class WebSocketManager {
   private ws: WebSocket | null = null;
   private gameState: WebSocketGameState = {
     isGameActive: false,
+    gameType: null,
     roomId: null,
     playerNickname: null,
     isHost: false
@@ -135,10 +137,16 @@ class WebSocketManager {
           
           // 處理遊戲狀態變化
           if (message.type === 'platformGameStarted') {
+            const gameType = message.data?.gameType || message.gameType;
             this.gameState.isGameActive = true;
-            console.log('[WebSocketManager] Game started - connection locked');
+            this.gameState.gameType = gameType;
+            console.log('[WebSocketManager] Game started - connection locked', {
+              gameType: gameType,
+              roomId: this.gameState.roomId
+            });
           } else if (message.type === 'gameEnded') {
             this.gameState.isGameActive = false;
+            this.gameState.gameType = null;
             console.log('[WebSocketManager] Game ended - connection unlocked');
           }
           
@@ -254,6 +262,7 @@ class WebSocketManager {
       }
       this.gameState = {
         isGameActive: false,
+        gameType: null,
         roomId: null,
         playerNickname: null,
         isHost: false
@@ -274,6 +283,7 @@ class WebSocketManager {
     }
     this.gameState = {
       isGameActive: false,
+      gameType: null,
       roomId: null,
       playerNickname: null,
       isHost: false

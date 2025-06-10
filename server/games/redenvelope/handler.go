@@ -147,7 +147,7 @@ func HandleGameStart(gameRoom *core.Room, client *core.Client, message core.Mess
 	gameRoom.GameData = gameData
 
 	// Initialize all clients' scores
-	for c := range gameRoom.Clients {
+	for c := range gameRoom.AllClients {
 		c.Score = 0
 	}
 
@@ -190,7 +190,7 @@ func InitializeRedEnvelopeGame(gameRoom *core.Room) {
 	gameRoom.GameData = gameData
 
 	// Initialize all clients' scores
-	for client := range gameRoom.Clients {
+	for client := range gameRoom.AllClients {
 		client.Score = 0
 	}
 
@@ -227,7 +227,7 @@ func GetGameStatus(gameRoom *core.Room) map[string]interface{} {
 		"timeLeft":  gameData.TimeLeft,
 		"gameTime":  gameData.GameTime,
 		"envelopes": len(gameData.Envelopes),
-		"players":   len(gameRoom.Clients),
+		"players":   len(gameRoom.AllClients),
 		"rankings":  rankings,
 		"startTime": gameData.StartTime,
 	}

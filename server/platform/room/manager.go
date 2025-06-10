@@ -26,7 +26,8 @@ func CreateRoom(roomID string) *core.Room {
 	room := &core.Room{
 		ID:                roomID,
 		HostClient:        nil,
-		Clients:           make(map[*core.Client]bool),
+		PlayerClients:     make(map[*core.Client]bool), // Only non-host players
+		AllClients:        make(map[*core.Client]bool), // All clients for backward compatibility
 		GameTime:          0,
 		TotalPlayers:      0,
 		PlayersReady:      make(map[string]bool),
@@ -66,7 +67,7 @@ func GetRoom(roomID string) (*core.Room, bool) {
 	return room, exists
 }
 
-// RegisterClient adds a client to a room
+// RegisterClient adds a client to a room with separated storage
 func RegisterClient(room *core.Room, client *core.Client) {
 	log.Printf("[ROOM %s] Registering client %s (IsHost: %t)", room.ID, client.Nickname, client.IsHost)
 
@@ -97,18 +98,24 @@ func RegisterClient(room *core.Room, client *core.Client) {
 		}
 	}
 
-	// Add client to room
-	room.Clients[client] = true
-	room.TotalPlayers = len(room.Clients)
-
-	// Set host if this is the first client or if client is designated as host
-	if room.HostClient == nil || client.IsHost {
+	// Add client to appropriate storage
+	if client.IsHost || room.HostClient == nil {
+		// Set as host
 		room.HostClient = client
 		client.IsHost = true
 		log.Printf("[ROOM %s] %s is now the host", room.ID, client.Nickname)
+	} else {
+		// Add to player storage
+		room.PlayerClients[client] = true
+		log.Printf("[ROOM %s] %s added to player storage", room.ID, client.Nickname)
 	}
 
-	log.Printf("[ROOM %s] Client %s registered. Total players: %d", room.ID, client.Nickname, room.TotalPlayers)
+	// Add to all clients for backward compatibility
+	room.AllClients[client] = true
+	room.TotalPlayers = len(room.AllClients)
+
+	log.Printf("[ROOM %s] Client %s registered. Total players: %d, Host: %v, Players: %d", 
+		room.ID, client.Nickname, room.TotalPlayers, room.HostClient != nil, len(room.PlayerClients))
 
 	// Only broadcast player joined notification for non-host players
 	if !client.IsHost {
@@ -122,33 +129,45 @@ func RegisterClient(room *core.Room, client *core.Client) {
 					Score:    client.Score,
 					Avatar:   client.Avatar,
 				},
-				"totalPlayers": len(room.Clients) - 1, // 不計算主持人
+				"totalPlayers": len(room.PlayerClients), // 只計算玩家
 			},
 		}
-		broadcastMessage(room, playerJoinedMsg)
+		// Broadcast to all clients
+		BroadcastToAllClients(room, playerJoinedMsg)
 	}
 
-	// Always broadcast updated player list (只包含非主持人玩家)
+	// Always broadcast updated player list
 	broadcastPlayerListUpdate(room)
 }
 
-// UnregisterClient removes a client from a room
+// UnregisterClient removes a client from a room with separated storage
 func UnregisterClient(room *core.Room, client *core.Client) {
-	log.Printf("[ROOM %s] Unregistering client %s", room.ID, client.Nickname)
+	log.Printf("[ROOM %s] Unregistering client %s (IsHost: %t)", room.ID, client.Nickname, client.IsHost)
 
-	delete(room.Clients, client)
-	room.TotalPlayers = len(room.Clients)
-
-	// If the host left, assign a new host
-	if room.HostClient == client {
+	// Remove from appropriate storage
+	if client.IsHost && room.HostClient == client {
+		// Remove host
 		room.HostClient = nil
-		for c := range room.Clients {
+		log.Printf("[ROOM %s] Host %s removed", room.ID, client.Nickname)
+		
+		// Assign a new host from players if available
+		for c := range room.PlayerClients {
+			// Move player to host
+			delete(room.PlayerClients, c)
 			room.HostClient = c
 			c.IsHost = true
 			log.Printf("[ROOM %s] %s is now the new host", room.ID, c.Nickname)
 			break
 		}
+	} else {
+		// Remove from player storage
+		delete(room.PlayerClients, client)
+		log.Printf("[ROOM %s] Player %s removed from player storage", room.ID, client.Nickname)
 	}
+
+	// Remove from all clients
+	delete(room.AllClients, client)
+	room.TotalPlayers = len(room.AllClients)
 
 	// Clean up empty rooms
 	if room.TotalPlayers == 0 {
@@ -162,7 +181,7 @@ func UnregisterClient(room *core.Room, client *core.Client) {
 	log.Printf("[ROOM %s] Client %s unregistered. Total players: %d", room.ID, client.Nickname, room.TotalPlayers)
 }
 
-// handleReconnections handles reconnection requests for a room
+// handleReconnections handles reconnection requests for a room with separated storage
 func handleReconnections(room *core.Room) {
 	log.Printf("[ROOM %s] Starting reconnection handler", room.ID)
 	for {
@@ -170,9 +189,9 @@ func handleReconnections(room *core.Room) {
 		case req := <-room.ReconnectionChan:
 			log.Printf("[ROOM %s] Processing reconnection request for %s", room.ID, req.Client.Nickname)
 
-			// Check if a client with the same nickname exists
+			// Check if a client with the same nickname exists in all clients
 			var existingClient *core.Client
-			for client := range room.Clients {
+			for client := range room.AllClients {
 				if client.Nickname == req.Client.Nickname {
 					existingClient = client
 					break
@@ -181,7 +200,7 @@ func handleReconnections(room *core.Room) {
 
 			if existingClient != nil {
 				// Replace the old connection with the new one
-				log.Printf("[ROOM %s] Replacing connection for %s", room.ID, req.Client.Nickname)
+				log.Printf("[ROOM %s] Replacing connection for %s (IsHost: %t)", room.ID, req.Client.Nickname, existingClient.IsHost)
 
 				// Close old connection
 				existingClient.Conn.Close()
@@ -208,20 +227,64 @@ func handleReconnections(room *core.Room) {
 	}
 }
 
-// BroadcastToRoom sends a message to all clients in a room
+// BroadcastToRoom sends a message to all clients in a room (backward compatibility)
 func BroadcastToRoom(room *core.Room, message map[string]interface{}) {
+	BroadcastToAllClients(room, message)
+}
+
+// BroadcastToAllClients sends a message to all clients (host + players)
+func BroadcastToAllClients(room *core.Room, message map[string]interface{}) {
 	messageBytes, err := json.Marshal(message)
 	if err != nil {
 		log.Printf("Error marshaling message: %v", err)
 		return
 	}
 
-	for client := range room.Clients {
+	for client := range room.AllClients {
 		client.Mutex.Lock()
 		err := client.Conn.WriteMessage(websocket.TextMessage, messageBytes)
 		client.Mutex.Unlock()
 		if err != nil {
 			log.Printf("Error broadcasting to %s: %v", client.Nickname, err)
+		}
+	}
+}
+
+// BroadcastToHost sends a message only to the host
+func BroadcastToHost(room *core.Room, message map[string]interface{}) {
+	if room.HostClient == nil {
+		log.Printf("[ROOM %s] No host to broadcast to", room.ID)
+		return
+	}
+
+	messageBytes, err := json.Marshal(message)
+	if err != nil {
+		log.Printf("Error marshaling host message: %v", err)
+		return
+	}
+
+	room.HostClient.Mutex.Lock()
+	err = room.HostClient.Conn.WriteMessage(websocket.TextMessage, messageBytes)
+	room.HostClient.Mutex.Unlock()
+	if err != nil {
+		log.Printf("Error broadcasting to host %s: %v", room.HostClient.Nickname, err)
+	}
+}
+
+// BroadcastToPlayers sends a message only to players (excluding host)
+func BroadcastToPlayers(room *core.Room, message map[string]interface{}) {
+	messageBytes, err := json.Marshal(message)
+	if err != nil {
+		log.Printf("Error marshaling player message: %v", err)
+		return
+	}
+
+	for client := range room.PlayerClients {
+		client.Mutex.Lock()
+		err := client.Conn.WriteMessage(websocket.TextMessage, messageBytes)
+		client.Mutex.Unlock()
+		if err != nil {
+			log.Printf("Error broadcasting to player %s: %v", client.Nickname, err)
 		}
 	}
 }
@@ -241,17 +304,15 @@ func BroadcastPlayerListUpdate(room *core.Room) {
 		})
 	}
 
-	// Add other clients
-	for client := range room.Clients {
-		if client != room.HostClient {
-			players = append(players, core.Player{
-				Nickname: client.Nickname,
-				ID:       client.Nickname,
-				IsHost:   false,
-				Score:    client.Score,
-				Avatar:   client.Avatar,
-			})
-		}
+	// Add player clients
+	for client := range room.PlayerClients {
+		players = append(players, core.Player{
+			Nickname: client.Nickname,
+			ID:       client.Nickname,
+			IsHost:   false,
+			Score:    client.Score,
+			Avatar:   client.Avatar,
+		})
 	}
 
 	playerListMsg := map[string]interface{}{
@@ -261,7 +322,7 @@ func BroadcastPlayerListUpdate(room *core.Room) {
 		},
 	}
 
-	BroadcastToRoom(room, playerListMsg)
+	BroadcastToAllClients(room, playerListMsg)
 }
 
 // GetRoomList returns a list of all active rooms
@@ -279,12 +340,18 @@ func GetRoomList() []string {
 
 // broadcastMessage sends a message to all clients in a room
 func broadcastMessage(room *core.Room, message map[string]interface{}) {
-	for client := range room.Clients {
+	messageBytes, err := json.Marshal(message)
+	if err != nil {
+		log.Printf("Error marshaling message: %v", err)
+		return
+	}
+
+	for client := range room.AllClients {
 		client.Mutex.Lock()
-		err := client.Conn.WriteJSON(message)
+		err := client.Conn.WriteMessage(websocket.TextMessage, messageBytes)
 		client.Mutex.Unlock()
 		if err != nil {
-			log.Printf("Error sending message to %s: %v", client.Nickname, err)
+			log.Printf("Error broadcasting to %s: %v", client.Nickname, err)
 		}
 	}
 }
@@ -294,17 +361,15 @@ func broadcastMessage(room *core.Room, message map[string]interface{}) {
 func broadcastPlayerListUpdate(room *core.Room) {
 	players := []core.Player{}
 
-	// Only add non-host clients (主持人不顯示在玩家列表中)
-	for client := range room.Clients {
-		if client != room.HostClient {
-			players = append(players, core.Player{
-				Nickname: client.Nickname,
-				ID:       client.Nickname,
-				IsHost:   false,
-				Score:    client.Score,
-				Avatar:   client.Avatar,
-			})
-		}
+	// Only add player clients (主持人不顯示在玩家列表中)
+	for client := range room.PlayerClients {
+		players = append(players, core.Player{
+			Nickname: client.Nickname,
+			ID:       client.Nickname,
+			IsHost:   false,
+			Score:    client.Score,
+			Avatar:   client.Avatar,
+		})
 	}
 
 	playerListMsg := map[string]interface{}{

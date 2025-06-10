@@ -95,15 +95,12 @@ func HandleGameEnd(gameRoom *core.Room) {
 func CalculateScores(gameRoom *core.Room) []PlayerScore {
 	var playerScores []PlayerScore
 
-	// Collect only non-host player scores
-	for client := range gameRoom.Clients {
-		// Skip host players, only include regular players in scoring
-		if !client.IsHost {
-			playerScores = append(playerScores, PlayerScore{
-				Nickname: client.Nickname,
-				Score:    client.Score,
-			})
-		}
+	// Collect player scores from PlayerClients
+	for client := range gameRoom.PlayerClients {
+		playerScores = append(playerScores, PlayerScore{
+			Nickname: client.Nickname,
+			Score:    client.Score,
+		})
 	}
 
 	// Sort by score (descending)
@@ -144,12 +141,9 @@ func StartMemoryGame(gameRoom *core.Room, numPairs int, gameTime int) {
 	gameRoom.WaitingForPlayers = false
 	gameRoom.GameTime = gameData.GameTime
 
-	// Reset only non-host player scores
-	for client := range gameRoom.Clients {
-		// Only reset scores for regular players, not hosts
-		if !client.IsHost {
-			client.Score = 0
-		}
+	// Reset player scores
+	for client := range gameRoom.PlayerClients {
+		client.Score = 0
 	}
 
 	// Start game timer (countdown from gameTime to 0)
@@ -164,7 +158,7 @@ func StartMemoryGame(gameRoom *core.Room, numPairs int, gameTime int) {
 					"type":     "gameTimeUpdate",
 					"timeLeft": gameRoom.GameTime,
 				})
-				
+
 				// Also send legacy timeUpdate for backward compatibility
 				room.BroadcastToRoom(gameRoom, map[string]interface{}{
 					"type":     "timeUpdate",
@@ -202,10 +196,10 @@ func StartMemoryGame(gameRoom *core.Room, numPairs int, gameTime int) {
 	})
 
 	// Also send gameData message for compatibility
-	room.BroadcastToRoom(gameRoom, map[string]interface{}{
-		"type":     "gameData",
-		"gameData": clientGameData,
-	})
+	//room.BroadcastToRoom(gameRoom, map[string]interface{}{
+	//	"type":     "gameData",
+	//	"gameData": clientGameData,
+	//})
 
 	log.Printf("[MEMORY] Memory game started for room %s with %d pairs and %d seconds", gameRoom.ID, numPairs, gameTime)
 }

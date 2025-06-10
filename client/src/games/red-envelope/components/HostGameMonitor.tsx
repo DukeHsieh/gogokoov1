@@ -13,6 +13,15 @@ const HostGameMonitor: React.FC = () => {
   const gameState = location.state as any;
   const playerNickname = gameState?.playerNickname || 'Host';
   const isHost = gameState?.isHost || true;
+  const initialGameData = gameState?.gameData;
+  const initialGameSettings = gameState?.gameSettings;
+  
+  console.log('[HOST] Initial state from WaitingRoom:', {
+    playerNickname,
+    isHost,
+    gameData: initialGameData,
+    gameSettings: initialGameSettings
+  });
   
   const [isConnected, setIsConnected] = useState(false);
   const [players, setPlayers] = useState<Player[]>([]);
@@ -25,7 +34,7 @@ const HostGameMonitor: React.FC = () => {
     totalPlayers: 0,
     collectedCount: 0
   });
-  const [gameSettings, setGameSettings] = useState<any>(null);
+  const [gameSettings, setGameSettings] = useState<any>(initialGameSettings || null);
   
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
@@ -38,19 +47,21 @@ const HostGameMonitor: React.FC = () => {
     }
   }, [isHost, navigate, roomId, gameState]);
 
-  // Load game settings from localStorage
+  // Load game settings from localStorage if not provided from WaitingRoom
   useEffect(() => {
     console.log('[HOST] Checking roomId:', roomId);
-    if (roomId) {
+    if (roomId && !initialGameSettings) {
       const storedSettings = localStorage.getItem(`game_${roomId}`);
       console.log('[HOST] Loading game settings for room:', roomId);
       if (storedSettings) {
         const settings = JSON.parse(storedSettings);
         setGameSettings(settings);
-        console.log('[HOST] Loaded game settings:', settings);
+        console.log('[HOST] Loaded game settings from localStorage:', settings);
       }
+    } else if (initialGameSettings) {
+      console.log('[HOST] Using game settings from WaitingRoom:', initialGameSettings);
     }
-  }, [roomId]);
+  }, [roomId, initialGameSettings]);
 
   // WebSocket connection and message handling
   useEffect(() => {

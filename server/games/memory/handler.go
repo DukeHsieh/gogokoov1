@@ -121,7 +121,7 @@ func SendGameState(client *core.Client, gameRoom *core.Room) {
 func getPlayerList(gameRoom *core.Room) []map[string]interface{} {
 	players := []map[string]interface{}{}
 
-	for client := range gameRoom.Clients {
+	for client := range gameRoom.AllClients {
 		player := map[string]interface{}{
 			"nickname": client.Nickname,
 			"score":    client.Score,

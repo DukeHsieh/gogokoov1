@@ -256,7 +256,7 @@ func updateRankings(gameRoom *core.Room) {
 func calculateRankings(gameRoom *core.Room) []PlayerScore {
 	var rankings []PlayerScore
 
-	for client := range gameRoom.Clients {
+	for client := range gameRoom.AllClients {
 		rankings = append(rankings, PlayerScore{
 			Nickname:       client.Nickname,
 			Score:          client.Score,
