@@ -86,6 +86,7 @@ const WhackAMoleHostMonitor: React.FC = () => {
     isActive: false,
     players: [],
   });
+  const [showGameOver, setShowGameOver] = useState(false);
 
   // 處理 WebSocket 消息
   const handleWebSocketMessage = (message: any) => {
@@ -104,15 +105,26 @@ const WhackAMoleHostMonitor: React.FC = () => {
         case 'timeUpdate':
           setGameState(prev => ({
             ...prev,
-            timeLeft: message.data?.timeLeft ?? prev.timeLeft,
+            timeLeft: message.timeLeft ?? prev.timeLeft,
           }));
           break;
           
         case 'scoreUpdate':
-          setGameState(prev => ({
-            ...prev,
-            players: message.data?.players || [],
-          }));
+          // The server now sends a map of PlayerScore objects
+          // We need to convert this map to an array for the HostMonitor state
+          const playersMap = message.data?.players as Record<string, Player>;
+          if (playersMap) {
+            const playersArray = Object.values(playersMap).map(p => ({ ...p, id: p.id || '' })); // Ensure id is present
+            setGameState(prev => ({
+              ...prev,
+              players: playersArray,
+            }));
+          } else {
+            setGameState(prev => ({
+              ...prev,
+              players: message.data?.players || [], // Fallback for old format, though server should send map
+            }));
+          }
           break;
           
         case 'gameEnd':
@@ -121,6 +133,7 @@ const WhackAMoleHostMonitor: React.FC = () => {
             isActive: false,
             timeLeft: 0,
           }));
+          setShowGameOver(true);
           break;
     }
   };
@@ -170,6 +183,33 @@ const WhackAMoleHostMonitor: React.FC = () => {
 
   const sortedPlayers = [...gameState.players].sort((a, b) => b.score - a.score);
 
+  if (showGameOver) {
+    return (
+      <StyledContainer>
+        <Box sx={{ textAlign: 'center', color: 'white' }}>
+          <Typography variant="h2" fontWeight="bold" mb={2}>
+            🎮 遊戲結束
+          </Typography>
+          <Typography variant="h4" mb={4}>
+            最終排行榜
+          </Typography>
+          {sortedPlayers.length > 0 && (
+            <Box sx={{ mb: 4 }}>
+              {sortedPlayers.slice(0, 3).map((player, index) => (
+                <Typography key={player.id} variant="h5" mb={1}>
+                   {index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉'} {player.nickname}: {player.score}分
+                 </Typography>
+              ))}
+            </Box>
+          )}
+          <Typography variant="h6" mb={4}>
+            感謝所有玩家的參與！
+          </Typography>
+        </Box>
+      </StyledContainer>
+    );
+  }
+
   return (
     <StyledContainer>
       {/* 標題 */}
@@ -213,24 +253,37 @@ const WhackAMoleHostMonitor: React.FC = () => {
           <MonitorCard>
             <CardContent>
               <Box display="flex" alignItems="center" mb={2}>
-                <People sx={{ color: '#667eea', mr: 1 }} />
+                <EmojiEvents sx={{ color: '#667eea', mr: 1 }} />
                 <Typography variant="h6" fontWeight="600">
                   遊戲狀態
                 </Typography>
               </Box>
               
-              <Box mb={2}>
-                <Chip
-                  label={gameState.isActive ? '遊戲進行中' : '遊戲已結束'}
-                  color={gameState.isActive ? 'success' : 'default'}
-                  sx={{ mb: 1, mr: 1 }}
-                />
-                <Chip
-                  label={`${gameState.players.length} 位玩家`}
-                  variant="outlined"
-                  sx={{ mb: 1 }}
-                />
-              </Box>
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={6}>
+                  <Box sx={{ textAlign: 'center' }}>
+                    <Typography variant="body2" color="text.secondary">
+                      遊戲狀態
+                    </Typography>
+                    <Chip 
+                      label={gameState.isActive ? '進行中' : '等待開始'}
+                      color={gameState.isActive ? 'success' : 'default'}
+                      sx={{ mt: 1 }}
+                    />
+                  </Box>
+                </Grid>
+                
+                <Grid item xs={12} md={6}>
+                  <Box sx={{ textAlign: 'center' }}>
+                    <Typography variant="body2" color="text.secondary">
+                      參與玩家
+                    </Typography>
+                    <Typography variant="h4" fontWeight="bold" color="primary">
+                      {gameState.players.length}
+                    </Typography>
+                  </Box>
+                </Grid>
+              </Grid>
               
               {gameState.isActive && (
                 <Button
@@ -239,6 +292,7 @@ const WhackAMoleHostMonitor: React.FC = () => {
                   startIcon={<Stop />}
                   onClick={handleStopGame}
                   fullWidth
+                  sx={{ mt: 2 }}
                 >
                   結束遊戲
                 </Button>

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"math/rand"
 	"sort"
 	"sync"
 	"time"
@@ -15,21 +14,21 @@ import (
 
 // Game represents a whack-a-mole game instance
 type Game struct {
-	mu           sync.RWMutex
-	RoomID       string
-	Settings     GameSettings
-	Data         GameData
-	Players      map[string]*PlayerScore
-	IsActive     bool
-	StartTime    time.Time
-	EndTime      time.Time
-	moleHoles    []MoleHole
-	moleTimers   map[string]*time.Timer
-	spawnTimer   *time.Timer
-	gameTimer    *time.Timer
-	onUpdate     func(roomID string, data interface{})
-	onGameEnd    func(roomID string)
-	onScoreUpdate func(roomID string, players map[string]*PlayerScore)
+	mu               sync.RWMutex
+	RoomID           string
+	Settings         GameSettings
+	Data             GameData
+	Players          map[string]*PlayerScore
+	IsActive         bool
+	StartTime        time.Time
+	EndTime          time.Time
+	moleHoles        []MoleHole
+	gameTimer        *time.Timer
+	timeUpdateTicker *time.Ticker
+	onUpdate         func(roomID string, data interface{})
+	onGameEnd        func(roomID string)
+	onScoreUpdate    func(roomID string, players map[string]*PlayerScore)
+	onTimeUpdate     func(timeLeft int)
 }
 
 // NewGame creates a new whack-a-mole game instance
@@ -38,7 +37,6 @@ func NewGame(roomID string, settings GameSettings) *Game {
 		RoomID:     roomID,
 		Settings:   settings,
 		Players:    make(map[string]*PlayerScore),
-		moleTimers: make(map[string]*time.Timer),
 		IsActive:   false,
 	}
 	
@@ -53,10 +51,12 @@ func (g *Game) SetCallbacks(
 	onUpdate func(roomID string, data interface{}),
 	onGameEnd func(roomID string),
 	onScoreUpdate func(roomID string, players map[string]*PlayerScore),
+	onTimeUpdate func(timeLeft int),
 ) {
 	g.onUpdate = onUpdate
 	g.onGameEnd = onGameEnd
 	g.onScoreUpdate = onScoreUpdate
+	g.onTimeUpdate = onTimeUpdate
 }
 
 // initializeMoleHoles creates the mole hole positions
@@ -88,6 +88,65 @@ func (g *Game) initializeMoleHoles() {
 	}
 }
 
+// AddPlayer adds a player to the game
+func (g *Game) AddPlayer(playerID, nickname string) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	
+	g.Players[playerID] = &PlayerScore{
+		Nickname: nickname,
+		Score:    0,
+		Rank:     0,
+		HitCount: 0,
+	}
+	
+	// 通知主持人玩家加入
+	if g.onUpdate != nil {
+		g.onUpdate(g.RoomID, map[string]interface{}{
+			"type": "playerJoined",
+			"data": map[string]interface{}{
+				"player": g.Players[playerID],
+			},
+		})
+	}
+}
+
+// HandleMoleHit processes when a player hits a mole
+func (g *Game) HandleMoleHit(playerID string, holeID int, score int) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	
+	if !g.IsActive {
+		return
+	}
+	
+	player, exists := g.Players[playerID]
+	if !exists {
+		return
+	}
+	
+	// 更新玩家分數
+	player.Score += 10 // 固定得分
+	player.HitCount++
+	
+	// 通知分數更新
+	if g.onScoreUpdate != nil {
+		g.onScoreUpdate(g.RoomID, g.Players)
+	}
+	
+	// 通知所有玩家分數更新
+	if g.onUpdate != nil {
+		g.onUpdate(g.RoomID, map[string]interface{}{
+			"type": "scoreUpdate",
+			"data": map[string]interface{}{
+				"playerId": playerID,
+				"score":    player.Score,
+				"players":  g.Players,
+			},
+		})
+	}
+}
+
 // Start begins the whack-a-mole game
 func (g *Game) Start() error {
 	g.mu.Lock()
@@ -111,127 +170,45 @@ func (g *Game) Start() error {
 		g.End()
 	})
 	
-	// Start mole spawning
-	g.startMoleSpawning()
+	// Start time update ticker (send time updates every second)
+	g.startTimeUpdates()
 	
 	return nil
 }
 
-// startMoleSpawning begins the mole spawning routine
-func (g *Game) startMoleSpawning() {
-	spawnInterval := time.Duration(g.Settings.MoleSpawnInterval) * time.Millisecond
-	
-	// Use a fraction of spawn interval as initial delay
-	initialDelay := spawnInterval / 2
-	g.spawnTimer = time.AfterFunc(initialDelay, func() {
-		g.spawnMole()
-		g.scheduleNextSpawn()
-	})
-}
-
-// scheduleNextSpawn schedules the next mole spawn
-func (g *Game) scheduleNextSpawn() {
-	if !g.IsActive {
-		return
-	}
-	
-	spawnInterval := time.Duration(g.Settings.MoleSpawnInterval) * time.Millisecond
-	// Add some randomness to spawn interval (±20%)
-	randomFactor := 0.8 + rand.Float64()*0.4
-	actualInterval := time.Duration(float64(spawnInterval) * randomFactor)
-	
-	g.spawnTimer = time.AfterFunc(actualInterval, func() {
-		g.spawnMole()
-		g.scheduleNextSpawn()
-	})
-}
-
-// spawnMole creates a new mole at a random available hole
-func (g *Game) spawnMole() {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	
-	if !g.IsActive {
-		return
-	}
-	
-	// Find available holes
-	availableHoles := make([]int, 0)
-	for i, hole := range g.moleHoles {
-		if !hole.IsOccupied {
-			availableHoles = append(availableHoles, i)
-		}
-	}
-	
-	if len(availableHoles) == 0 {
-		return // No available holes
-	}
-	
-	// Select random hole
-	holeIndex := availableHoles[rand.Intn(len(availableHoles))]
-	g.moleHoles[holeIndex].IsOccupied = true
-	
-	// Create new mole
-	moleID := fmt.Sprintf("mole_%d_%d", time.Now().UnixNano(), holeIndex)
-	newMole := MoleState{
-		ID:        moleID,
-		Position:  holeIndex,
-		SpawnTime: time.Now().UnixNano() / int64(time.Millisecond),
-	}
-	
-	// Add to active moles
-	g.Data.Moles = append(g.Data.Moles, newMole)
-	
-	// Schedule mole removal after lifetime
-	lifetime := time.Duration(g.Settings.MoleLifetime) * time.Millisecond
-	g.moleTimers[moleID] = time.AfterFunc(lifetime, func() {
-		g.hideMole(moleID)
-	})
-	
-	// Notify about mole spawn
-	if g.onUpdate != nil {
-		g.onUpdate(g.RoomID, map[string]interface{}{
-			"type": "moleSpawned",
-			"mole": newMole,
-		})
-	}
-}
-
-// hideMole removes a mole from the game
-func (g *Game) hideMole(moleID string) {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	
-	// Find and remove the mole
-	for i, mole := range g.Data.Moles {
-		if mole.ID == moleID {
-			// Free the hole
-			g.moleHoles[mole.Position].IsOccupied = false
-			
-			// Remove mole from active list
-			g.Data.Moles = append(g.Data.Moles[:i], g.Data.Moles[i+1:]...)
-			
-			// Clean up timer
-			if timer, exists := g.moleTimers[moleID]; exists {
-				timer.Stop()
-				delete(g.moleTimers, moleID)
+// startTimeUpdates begins sending time updates every second
+func (g *Game) startTimeUpdates() {
+	g.timeUpdateTicker = time.NewTicker(1 * time.Second)
+	go func() {
+		for {
+			select {
+			case <-g.timeUpdateTicker.C:
+				if !g.IsActive {
+					return
+				}
+				
+				// Calculate remaining time
+				now := time.Now()
+				remaining := g.EndTime.Sub(now)
+				timeLeft := int(remaining.Seconds())
+				
+				if timeLeft < 0 {
+					timeLeft = 0
+				}
+				
+				// Update game data
+				g.mu.Lock()
+				g.Data.TimeRemaining = timeLeft
+				g.mu.Unlock()
+				
+				// Send time update to clients
+				if g.onTimeUpdate != nil {
+					g.onTimeUpdate(timeLeft)
+				}
 			}
-			
-			// Notify about mole disappearance
-			if g.onUpdate != nil {
-				g.onUpdate(g.RoomID, map[string]interface{}{
-					"type":   "moleHidden",
-					"moleId": moleID,
-				})
-			}
-			break
 		}
-	}
+	}()
 }
-
-
-
-
 
 // HitMole handles a mole being hit by a player
 func (g *Game) HitMole(playerID, nickname, moleID string) bool {
@@ -241,22 +218,6 @@ func (g *Game) HitMole(playerID, nickname, moleID string) bool {
 	if !g.IsActive {
 		return false
 	}
-	
-	// Find the mole
-	moleIndex := -1
-	for i, mole := range g.Data.Moles {
-		if mole.ID == moleID {
-			moleIndex = i
-			break
-		}
-	}
-	
-	if moleIndex == -1 {
-		return false // Mole not found
-	}
-	
-	// Remove the mole from active moles
-	g.Data.Moles = append(g.Data.Moles[:moleIndex], g.Data.Moles[moleIndex+1:]...)
 	
 	// Update player score
 	if g.Players[playerID] == nil {
@@ -273,17 +234,18 @@ func (g *Game) HitMole(playerID, nickname, moleID string) bool {
 	// Update rankings
 	g.updateRankings()
 	
-	// Schedule mole removal
-	go func() {
-		time.Sleep(500 * time.Millisecond) // Show hit effect
-		g.hideMole(moleID)
-	}()
-	
-	// Notify about score update
-	if g.onScoreUpdate != nil {
-		g.onScoreUpdate(g.RoomID, g.Players)
+	// Notify about score update to all clients (including host)
+	if g.onUpdate != nil {
+		g.onUpdate(g.RoomID, map[string]interface{}{
+			"type": "scoreUpdate",
+			"data": map[string]interface{}{
+				"playerId": playerID,
+				"score":    g.Players[playerID].Score,
+				"players":  g.Players, // Send all player scores for ranking on client
+			},
+		})
 	}
-	
+
 	return true
 }
 
@@ -321,19 +283,17 @@ func (g *Game) End() {
 	if g.gameTimer != nil {
 		g.gameTimer.Stop()
 	}
-	if g.spawnTimer != nil {
-		g.spawnTimer.Stop()
-	}
-	for _, timer := range g.moleTimers {
-		timer.Stop()
+	if g.timeUpdateTicker != nil {
+		g.timeUpdateTicker.Stop()
 	}
 	
 	// Clear moles and reset holes
 	g.Data.Moles = make([]MoleState, 0)
 	g.Data.IsActive = false
-	for i := range g.moleHoles {
-		g.moleHoles[i].IsOccupied = false
-	}
+	// Mole occupation is now handled by client
+	// for i := range g.moleHoles {
+	// 	g.moleHoles[i].IsOccupied = false
+	// }
 	
 	// Final ranking update
 	g.updateRankings()
@@ -367,20 +327,7 @@ func (g *Game) GetPlayers() map[string]*PlayerScore {
 
 
 
-// AddPlayer adds a player to the game
-func (g *Game) AddPlayer(playerID, nickname string) {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	
-	if g.Players[playerID] == nil {
-		g.Players[playerID] = &PlayerScore{
-			Nickname: nickname,
-			Score:    0,
-			Rank:     len(g.Players) + 1,
-			HitCount: 0,
-		}
-	}
-}
+
 
 // RemovePlayer removes a player from the game
 func (g *Game) RemovePlayer(playerID string) {

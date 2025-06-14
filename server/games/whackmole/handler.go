@@ -11,6 +11,8 @@ import (
 // HandleWhackAMoleGameMessage processes whack-a-mole game specific messages
 func HandleWhackAMoleGameMessage(gameRoom *core.Room, client *core.Client, message core.Message) {
 	switch message.Type {
+	case "playerJoin":
+		handlePlayerJoin(gameRoom, client, message)
 	case "moleHit":
 		handleMoleHit(gameRoom, client, message)
 	case "scoreUpdate":
@@ -24,6 +26,41 @@ func HandleWhackAMoleGameMessage(gameRoom *core.Room, client *core.Client, messa
 	default:
 		log.Printf("[WHACKMOLE] Unknown whack-a-mole game message type: %s", message.Type)
 	}
+}
+
+// handlePlayerJoin processes player join messages
+func handlePlayerJoin(gameRoom *core.Room, client *core.Client, message core.Message) {
+	log.Printf("[WHACKMOLE] Player %s joining game in room %s", client.Nickname, gameRoom.ID)
+	
+	// Get game instance
+	game, ok := gameRoom.GameData.(*Game)
+	if !ok {
+		log.Printf("[WHACKMOLE] No active game found in room %s", gameRoom.ID)
+		return
+	}
+	
+	// Extract player data
+	dataMap, ok := message.Data.(map[string]interface{})
+	if !ok {
+		log.Printf("[WHACKMOLE] Invalid message data format")
+		return
+	}
+	
+	playerData, ok := dataMap["player"].(map[string]interface{})
+	if !ok {
+		log.Printf("[WHACKMOLE] Invalid player data format")
+		return
+	}
+	
+	nickname, ok := playerData["nickname"].(string)
+	if !ok {
+		nickname = "玩家" + client.Nickname[:6] // 預設暱稱
+	}
+	
+	// Add player to game
+	game.AddPlayer(client.Nickname, nickname)
+	
+	log.Printf("[WHACKMOLE] Player %s (%s) joined game in room %s", client.Nickname, nickname, gameRoom.ID)
 }
 
 // HandleGameStart initializes and starts a new whack-a-mole game
@@ -90,6 +127,13 @@ func HandleGameStart(gameRoom *core.Room, client *core.Client, message core.Mess
 				"players": playerScores,
 			})
 		},
+		func(timeLeft int) {
+			// Handle time updates
+			room.BroadcastToRoom(gameRoom, map[string]interface{}{
+				"type":     "timeUpdate",
+				"timeLeft": timeLeft,
+			})
+		},
 	)
 
 	// Store the game instance in the room
@@ -138,32 +182,19 @@ func handleMoleHit(gameRoom *core.Room, client *core.Client, message core.Messag
 	}
 
 	// Extract mole ID
-	moleID, idOk := dataMap["moleId"].(string)
-	if !idOk {
+	moleID, moleOk := dataMap["moleId"].(string)
+	if !moleOk {
 		log.Printf("[WHACKMOLE] Invalid moleId in message data")
 		return
 	}
 
-	// Process the hit
-	hit := game.ProcessMoleHit(client.Nickname, client.Nickname, moleID)
-	if hit {
-		// Get updated player data
-		players := game.GetPlayers()
-		if playerScore, exists := players[client.Nickname]; exists {
-			// Update client score
-			client.Mutex.Lock()
-			client.Score = playerScore.Score
-			client.Mutex.Unlock()
+	// Process the hit using the moleID
+	hitSuccess := game.HitMole(client.Nickname, client.Nickname, moleID) // Pass client.Nickname as both playerID and nickname for now
 
-			// Broadcast score update
-			room.BroadcastToRoom(gameRoom, map[string]interface{}{
-				"type": "scoreUpdate",
-				"data": map[string]interface{}{
-					"playerId": client.Nickname,
-					"score":    playerScore.Score,
-				},
-			})
-		}
+	if hitSuccess {
+		log.Printf("[WHACKMOLE] Player %s hit mole %s", client.Nickname, moleID)
+	} else {
+		log.Printf("[WHACKMOLE] Player %s attempted to hit mole %s, but it was not successful (e.g., mole already gone or invalid ID)", client.Nickname, moleID)
 	}
 }
 
