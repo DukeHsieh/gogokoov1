@@ -28,13 +28,7 @@ export const GameStatus: React.FC<GameStatusProps> = ({ gameState, playerNicknam
     );
   }
 
-  if (gameState.status === 'waiting') {
-    return (
-      <Typography variant="h5" align="center" sx={{ mb: 4 }}>
-        等待遊戲開始...
-      </Typography>
-    );
-  }
+
 
   return (
     <Paper elevation={2} sx={{ p: 3, mb: 4 }}>

@@ -203,8 +203,8 @@ func InitializeRedEnvelopeGame(gameRoom *core.Room) {
 	}
 
 	room.BroadcastToRoom(gameRoom, map[string]interface{}{
-		"type": "gameInit",
-		"data": clientData,
+		"type": "gameData",
+		"gameData": clientData,
 	})
 
 	log.Printf("[REDENVELOPE] Red envelope game initialized for room %s", gameRoom.ID)

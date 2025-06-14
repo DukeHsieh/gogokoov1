@@ -218,7 +218,7 @@ const WaitingRoom: React.FC<WaitingRoomProps> = () => {
           console.log('Game starting...', message);
           
           const gameType = message.data?.gameType || message.gameType;
-          const gameData = message.data?.gameData || message.gameData;
+          const gameData = message.data?.gameData || message.gameData || message.data;
           
           // 檢查是否已經在同一個遊戲中
           if (currentGameState.isInGame && 
@@ -280,6 +280,15 @@ const WaitingRoom: React.FC<WaitingRoomProps> = () => {
                 }
               });
             }
+          } else if (gameType === 'whackmole') {
+            navigate(`/games/whack-a-mole/game/${roomId}`, {
+              state: { 
+                playerNickname, 
+                isHost, 
+                gameData: gameData,
+                gameSettings: gameData?.gameSettings 
+              }
+            });
           } else {
             // 預設導向記憶卡遊戲
             console.warn('Unknown game type:', gameType, 'defaulting to memory game');

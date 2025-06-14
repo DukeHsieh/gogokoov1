@@ -170,6 +170,15 @@ const games = [
     animal: '🐱',
   },
   {
+    id: 'whack-a-mole',
+    title: '打地鼠大作戰',
+    description: '快速反應遊戲！敲打從洞裡冒出來的地鼠，考驗你的反應速度和準確度。',
+    image: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 140"><defs><linearGradient id="moleGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%2332CD32"/><stop offset="50%" stop-color="%2328A745"/><stop offset="100%" stop-color="%23228B22"/></linearGradient><radialGradient id="holeGrad" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="%23654321"/><stop offset="100%" stop-color="%232F1B14"/></radialGradient></defs><rect width="200" height="140" fill="url(%23moleGrad)" rx="15"/><ellipse cx="60" cy="90" rx="15" ry="8" fill="url(%23holeGrad)"/><ellipse cx="100" cy="70" rx="15" ry="8" fill="url(%23holeGrad)"/><ellipse cx="140" cy="90" rx="15" ry="8" fill="url(%23holeGrad)"/><g transform="translate(100,65)"><ellipse cx="0" cy="5" rx="8" ry="6" fill="%23D2691E"/><circle cx="0" cy="0" r="6" fill="%23F4A460"/><circle cx="-2" cy="-2" r="1" fill="%23000"/><circle cx="2" cy="-2" r="1" fill="%23000"/><ellipse cx="0" cy="1" rx="1" ry="0.5" fill="%23000"/><path d="M-3,-1 Q0,-3 3,-1" stroke="%23000" stroke-width="0.5" fill="none"/></g><text x="100" y="125" font-family="Arial" font-size="14" fill="white" text-anchor="middle" font-weight="bold">🔨 打地鼠</text></svg>',
+    participants: '3-20人',
+    duration: '5-15分鐘',
+    animal: '🐹',
+  },
+  {
     id: 'coming-soon-1',
     title: '神秘遊戲',
     description: '更多精彩遊戲即將登場，敬請期待！',
@@ -191,6 +200,11 @@ const GameList = () => {
       case 'red-envelope':
         // 導航到搶紅包遊戲創建頁面
         navigate('/games/red-envelope/create');
+        break;
+      case 'whack-a-mole':
+        // 生成房間ID並直接跳轉到打地鼠遊戲設定頁面
+        const roomId = Math.floor(100000 + Math.random() * 900000).toString();
+        navigate(`/games/whack-a-mole/settings/${roomId}`);
         break;
       case 'coming-soon-1':
         // 即將推出的遊戲不做任何操作

@@ -1,4 +1,4 @@
-import type { SoundEffects } from '../types';
+import type { SoundEffects } from './types';
 
 // 音效管理器
 class SoundEffectsManager implements SoundEffects {

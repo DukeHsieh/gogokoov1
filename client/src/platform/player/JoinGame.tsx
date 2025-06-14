@@ -104,6 +104,10 @@ const JoinGame = () => {
                   navigate(`/games/red-envelope/game/${roomId}`, {
                     state: { playerNickname: nickname, isHost: false }
                   });
+                } else if (gameType === 'whackmole') {
+                  navigate(`/games/whack-a-mole/game/${roomId}`, {
+                    state: { playerNickname: nickname, isHost: false }
+                  });
                 } else {
                   // 預設導向記憶卡遊戲
                   navigate(`/game/${roomId}`, {

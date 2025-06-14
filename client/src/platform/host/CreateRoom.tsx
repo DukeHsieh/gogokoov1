@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Container,
   Typography,
@@ -41,19 +41,57 @@ const FormCard = styled(Card)(({ theme }) => ({
 
 const CreateRoom = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const gameType = searchParams.get('gameType') || 'memory';
+  
   const [roomName, setRoomName] = useState('歡樂遊戲室');
-  const [roomDescription, setRoomDescription] = useState('一起來玩記憶大考驗吧！');
+  const [roomDescription, setRoomDescription] = useState('');
   const [maxPlayers, setMaxPlayers] = useState('8');
+
+  // 根據遊戲類型設置默認值
+  useEffect(() => {
+    switch (gameType) {
+      case 'whackmole':
+        setRoomDescription('一起來玩打地鼠大作戰吧！');
+        setMaxPlayers('12');
+        break;
+      case 'redenvelope':
+        setRoomDescription('一起來玩搶紅包大戰吧！');
+        setMaxPlayers('10');
+        break;
+      case 'memory':
+      default:
+        setRoomDescription('一起來玩記憶大考驗吧！');
+        setMaxPlayers('8');
+        break;
+    }
+  }, [gameType]);
 
   const handleCreateRoom = () => {
     // 生成6位數房間號碼
     const roomId = Math.floor(100000 + Math.random() * 900000).toString();
     
-    // 導航到遊戲房間頁面，傳遞房間設定
-    navigate(`/gameroom/${roomId}`, {
+    // 根據遊戲類型導航到不同的頁面
+    let targetPath;
+    switch (gameType) {
+      case 'whackmole':
+        targetPath = `/games/whack-a-mole/host/${roomId}`;
+        break;
+      case 'redenvelope':
+        targetPath = `/games/red-envelope/host/${roomId}`;
+        break;
+      case 'memory':
+      default:
+        targetPath = `/gameroom/${roomId}`;
+        break;
+    }
+    
+    // 導航到對應的遊戲頁面，傳遞房間設定
+    navigate(targetPath, {
       state: {
         isHost: true,
         playerNickname: '主持人',
+        gameType: gameType,
         roomSettings: {
           name: roomName,
           description: roomDescription,
@@ -77,7 +115,7 @@ const CreateRoom = () => {
                 textShadow: '2px 2px 4px rgba(0,0,0,0.3)',
               }}
             >
-              創建遊戲房間
+              創建{gameType === 'whackmole' ? '打地鼠' : gameType === 'redenvelope' ? '搶紅包' : '記憶'}遊戲房間
             </Typography>
             <Typography
               variant="h6"

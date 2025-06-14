@@ -33,7 +33,7 @@ export const useGameState = ({ roomId, gameSettings, initialTimeLeft }: UseGameS
   }, [storedGameSettings, initialTimeLeft, gameSettings?.duration]);
 
   const [gameState, setGameState] = useState<GameState>({
-    status: 'waiting',
+    status: 'playing', // 直接開始遊戲，不等待
     timeLeft: initialTimeLeft || 60,
     cards: [],
     score: 0,

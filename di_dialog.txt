@@ -1,6 +1,112 @@
 
 
 
+mole host and player 都不要重新建立連線，
+移除自行建立連線的程式,
+要使用platform client 建立好的連線,
+參考red-envelope client 連線相關的程式,
+修改more host and player 
+
+
+mole server端參考 memory 架構,
+mole 啟動遊戲移到logic程式裡,
+startmodegame function 內傳送 platformGameStarted 給玩家,
+當主持人按下遊戲開始後,
+server收到訊息, 呼叫mole game startmodegame,
+請比照 memory game server結構,
+重構mole game server檔案與程式
+
+
+主持人選擇 打地鼠 遊戲，畫面要跳到 遊戲設定頁,
+遊戲設定頁是獨立的tsx檔案,
+設定頁有一個 開始遊戲 的按鈕,
+按下後進入 排名與計時 的頁面, 直到結束。
+玩家的部分, 主持人按下開始後, 直接進入遊戲畫面,
+遊戲畫面有倒數時間, 時間統一由server傳給client server,
+主持人與玩家 都沒有任何跟房間頁面有關的程式,
+房間屬於平台管理, 不屬於遊戲,
+請修該client server相關程式
+
+
+我要製作第三個遊戲 打地鼠,
+遊戲參數有 地鼠隻數 遊戲時間,
+地鼠會在畫面中亂數出現,
+玩家點擊到地鼠就會得到一點分,
+時間到了就結束遊戲,
+幫我生成地鼠svg圖,
+並將分數傳給server,
+server將分數傳給主持人,
+參考memory-card遊戲結構,
+client server 目錄都分成 player host,
+並且修改相關程式,
+完成第三個遊戲
+
+
+
+大幅修改 玩家紅包遊戲 主體，
+幫我產生 動物圖樣紅包svg 當成紅包，
+紅包從上面掉下來，
+玩家點擊到，就隨機打開紅包，得到一個隨機分數，
+分數在即時傳到主持人的排行榜上，
+畫面上要有倒數時間，
+時間從server得到，
+時間到了後就結束遊戲，跳出結束宣告。 
+
+
+修改 red-envelope monitor程式，
+取消 總玩家數 總分數 最高分 平均分 四個數字與畫面,
+檢查網路收到玩家資訊後，卻沒有顯示在排行榜上，
+主持人本身不需要顯示在排行榜上
+
+
+修改 red-envelope 內的程式，
+主持人monitor不需要 開始遊戲 與 結束遊戲 的按鈕 與相關程式，請移除,
+進入頁面直接開始。
+玩家 也不需要 等待遊戲開始，直接開始，
+請修改所有相關遊戲
+
+
+分析red-envelope目錄內的檔案,
+將畫面相關的程式檔案，遊戲相關的放到player目錄下
+排行榜與玩家狀態的放到host目錄下,
+只要有畫面的程式，都是應用放到player host目錄下，
+並且修改相關程式, 確保程式執行的正確性
+
+參考memorycardgame,
+取消 red-envelope gamecontrol ongamedata 這個funciton, 
+改用使用進入頁面得到的 gamesettings 來執行ongamedata初始遊戲的程式,
+因為gamedata會從頁面重送過來，
+請修改gamecontrol內的程式，並確保物件資料符合格式
+
+
+red-envelope gamecontrol 缺少gamedata資料,
+gamedata是從waiting room取得後，
+傳給gamecontrol,
+請修改相關程式，讓gamecontrol得到資料後,
+順利進入遊戲內
+
+red-envelope 要使用自己的usewebsockethandler,
+不要用memory-card目錄的,
+複製並修改usewebsockethandler 成為red-envelope 自己的網路處理,
+裡面處理的方法結構可以參考memeory-card,
+並修改相關程式，完成red-envelope完整的網路瘋包處理
+
+我不要red-envelope目錄下的 config hooks types這幾個目錄,
+可以集中在utils下,
+red-envelope目錄下的檔案如果是 玩遊戲 相關，
+搬移到player目錄下
+
+client side red-envelope 目錄檔案調整，參考memory-card, 
+只要兩個目錄 host player, 
+host 放主持人相關程式檔案,
+player 放玩家相關程式檔案,
+其他目錄都不需要，請把檔案或程式都分配到這兩個目錄與red-envelope根目錄上,
+請調整這些檔案, 並確認流程與資料留是正確的 
+
+memory monitor 頁面上 主持人 不需要加到排行榜上，
+幫我美化 monitor 頁面, 加入很多動物, 吉卜力風格svg圖,
+動物們緊張的互相競爭, 有一群動物當啦啦隊加油
+
 取消 MemoryCardGame ongamedata 這個funciton, 
 改用使用進入頁面得到的 gamesettings 來執行ongamedata初始遊戲的程式,
 因為gamedata會從頁面重送過來，

@@ -8,6 +8,7 @@ import (
 	"gaming-platform/core"
 	"gaming-platform/games/memory"
 	"gaming-platform/games/redenvelope"
+	"gaming-platform/games/whackmole"
 )
 
 // HandleMessage handles incoming WebSocket messages from clients
@@ -49,6 +50,9 @@ func HandleMessage(client *core.Client, room *core.Room, msgData []byte) {
 						Data: msg,
 					}
 					redenvelope.HandleRedEnvelopeGameMessage(room, client, coreMsg)
+				case "whackmole":
+					// Handle whack-a-mole game start
+					whackmole.HandleWhackAMoleWebSocketMessage(room, client, msg)
 				default:
 					log.Printf("[MESSAGE] Unknown game type for hostStartGame: %s", gameType)
 				}
@@ -83,6 +87,9 @@ func HandleMessage(client *core.Client, room *core.Room, msgData []byte) {
 		}
 		// Delegate to red envelope game handler
 		redenvelope.HandleRedEnvelopeGameMessage(room, client, coreMsg)
+	case "moleHit", "startGame":
+		// Handle whack-a-mole game messages
+		whackmole.HandleWhackAMoleWebSocketMessage(room, client, msg)
 	case "hostCloseGame":
 		// Delegate to appropriate game handler based on game type
 		handleHostCloseGame(client, room)
