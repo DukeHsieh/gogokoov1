@@ -87,7 +87,7 @@ func HandleMessage(client *core.Client, room *core.Room, msgData []byte) {
 		}
 		// Delegate to red envelope game handler
 		redenvelope.HandleRedEnvelopeGameMessage(room, client, coreMsg)
-	case "moleHit", "startGame":
+	case "moleScoreUpdate":
 		// Handle whack-a-mole game messages
 		whackmole.HandleWhackAMoleWebSocketMessage(room, client, msg)
 	case "hostCloseGame":

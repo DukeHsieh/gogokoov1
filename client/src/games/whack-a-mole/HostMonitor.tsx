@@ -94,6 +94,7 @@ const WhackAMoleHostMonitor: React.FC = () => {
     
     switch (message.type) {
         case 'gameStarted':
+        case 'moleStartGame':
           setGameState(prev => ({
             ...prev,
             isActive: true,
@@ -110,6 +111,7 @@ const WhackAMoleHostMonitor: React.FC = () => {
           break;
           
         case 'scoreUpdate':
+        case 'moleScoreupdate':
           // The server now sends a map of PlayerScore objects
           // We need to convert this map to an array for the HostMonitor state
           const playersMap = message.data?.players as Record<string, Player>;
@@ -127,7 +129,24 @@ const WhackAMoleHostMonitor: React.FC = () => {
           }
           break;
           
-        case 'gameEnd':
+        case 'leaderboard':
+          if (message.players) {
+            const playersMap = message.players as Record<string, any>;
+            const playersArray = Object.values(playersMap).map((p: any) => ({
+              id: p.nickname || '',
+              nickname: p.nickname || '',
+              score: p.score || 0,
+              avatar: p.avatar || '',
+            }));
+            setGameState(prev => ({
+              ...prev,
+              players: playersArray,
+            }));
+          }
+          break;
+          
+        case 'gameend':
+        case 'moleGameEnd':
           setGameState(prev => ({
             ...prev,
             isActive: false,

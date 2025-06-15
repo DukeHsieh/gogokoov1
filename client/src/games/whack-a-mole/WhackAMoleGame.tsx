@@ -334,10 +334,12 @@ const WhackAMoleGame: React.FC = () => {
   const handleWebSocketMessage = (message: any) => {
     switch (message.type) {
       case 'gameStarted':
+      case 'moleStartGame':
 
         break;
         
-      case 'gameEnd':
+      case 'gameend':
+      case 'moleGameEnd':
         setGameState(prev => ({
           ...prev,
           isActive: false,
@@ -363,7 +365,7 @@ const WhackAMoleGame: React.FC = () => {
       //   // This logic is now client-side
       //   break;
         
-      case 'scoreUpdate':
+      case 'moleScoreUpdate':
         // Check if the score update is for the current player
         if (message.data?.playerId === (wsManagerRef.current as any)?.gameState?.playerNickname) {
           setGameState(prev => ({
@@ -408,26 +410,26 @@ const WhackAMoleGame: React.FC = () => {
       )
     );
 
-    // 更新本地分數 (如果需要立即反饋，或者等待伺服器確認)
+    // 客户端决定得分：击中地鼠得10分
+    const scoreGained = 10;
+    const newScore = gameState.score + scoreGained;
     setGameState(prev => ({
       ...prev,
-      score: prev.score + 10, // 假設固定得分，或者這個分數更新也可以由伺服器推送的 scoreUpdate 觸發
+      score: newScore,
     }));
 
-    // 發送擊中消息到服務器
-    if (wsManagerRef.current && hole.moleId) { // Ensure moleId exists
+    // 發送 scoreupdate 訊息到服務器，包含 player 的總分
+    if (wsManagerRef.current) {
       wsManagerRef.current.send({
-        type: 'moleHit',
+        type: 'moleScoreUpdate',
         data: {
-          holeId: holeId, // Keep holeId for server-side logic if needed
-          moleId: hole.moleId, // Send the specific moleId that was hit
-          // score is calculated server-side now, so no need to send it from client
+          totalScore: newScore, // player 自己的總分
         },
       });
     }
 
     // isHit 狀態和地鼠消失將由 hideMole 通過計時器處理
-  }, [gameState.isActive, gameState.score, moleHoles, hideMole]); // Added hideMole to dependencies
+  }, [gameState.isActive, moleHoles, hideMole]);
 
 
 
