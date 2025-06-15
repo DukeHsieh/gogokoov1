@@ -37,6 +37,7 @@ func HandleMessage(client *core.Client, room *core.Room, msgData []byte) {
 		handleStartGameWithNotification(client, room, msg)
 	case "hostStartGame":
 		// Delegate to appropriate game handler based on game type
+		log.Printf("[DEBUG] handleHostStartGame called with msg: %v", msg)
 		data, dataOk := msg["data"].(map[string]interface{})
 		if dataOk {
 			if gameType, ok := data["gameType"].(string); ok {
@@ -44,9 +45,8 @@ func HandleMessage(client *core.Client, room *core.Room, msgData []byte) {
 				case "memory":
 					memory.HandleHostStartGame(room, client, msg)
 				case "redenvelope":
-					// 将消息转换为core.Message格式以处理红包游戏
 					coreMsg := core.Message{
-						Type: "gameStart",
+						Type: msgType,
 						Data: msg,
 					}
 					redenvelope.HandleRedEnvelopeGameMessage(room, client, coreMsg)
