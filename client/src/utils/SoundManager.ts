@@ -208,12 +208,42 @@ class SoundManager {
   }
 
   // 背景音樂控制
-  public playBackgroundMusic(): void {
-    if (this.backgroundMusic && !this.isMusicMuted) {
+  public playBackgroundMusic(customPath?: string): void {
+    if (customPath) {
+      // 如果提供了自定義路徑，載入新的背景音樂
+      this.loadCustomBackgroundMusic(customPath);
+    } else if (this.backgroundMusic && !this.isMusicMuted) {
       this.backgroundMusic.play().catch(error => {
         console.warn('播放背景音樂失敗:', error);
       });
     }
+  }
+
+  private loadCustomBackgroundMusic(path: string): void {
+    // 停止當前背景音樂
+    if (this.backgroundMusic) {
+      this.backgroundMusic.pause();
+      this.backgroundMusic.currentTime = 0;
+    }
+    
+    // 載入新的背景音樂
+    this.backgroundMusic = new Audio(path);
+    this.backgroundMusic.loop = true;
+    this.backgroundMusic.volume = 0.3;
+    this.backgroundMusic.preload = 'auto';
+    
+    this.backgroundMusic.addEventListener('error', (e) => {
+      console.warn(`Custom background music failed to load from ${path}:`, e);
+    });
+    
+    this.backgroundMusic.addEventListener('canplaythrough', () => {
+      console.log(`Custom background music loaded successfully: ${path}`);
+      if (!this.isMusicMuted) {
+        this.backgroundMusic!.play().catch(error => {
+          console.warn('播放自定義背景音樂失敗:', error);
+        });
+      }
+    });
   }
 
   public pauseBackgroundMusic(): void {

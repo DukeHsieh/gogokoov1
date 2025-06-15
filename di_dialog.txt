@@ -1,12 +1,16 @@
 
 
 
+play mole_leaderboard as mole host monitor background music,
+add sound and music in mole host and player page,
+make the game more realistic and vivid.
+do not hide the leaderboard when game over in host and player page.
+
 mole host and player 都不要重新建立連線，
 移除自行建立連線的程式,
 要使用platform client 建立好的連線,
 參考red-envelope client 連線相關的程式,
 修改more host and player 
-
 
 mole server端參考 memory 架構,
 mole 啟動遊戲移到logic程式裡,

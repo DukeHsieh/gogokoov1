@@ -7,9 +7,15 @@ import {
   Card,
   CardContent,
   Grid,
+  List,
+  ListItemText,
+  Avatar,
+  Chip,
 } from '@mui/material';
 import { styled, keyframes } from '@mui/material/styles';
+import { EmojiEvents } from '@mui/icons-material';
 import WebSocketManager from '../../utils/WebSocketManager';
+import SoundManager from '../../utils/SoundManager';
 
 // 動畫定義
 const moleAppear = keyframes`
@@ -158,6 +164,31 @@ const TimerCard = styled(Card)(({ theme }) => ({
   boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
 }));
 
+const LeaderboardCard = styled(Card)(({ theme }) => ({
+  background: 'rgba(255,255,255,0.95)',
+  backdropFilter: 'blur(10px)',
+  borderRadius: 16,
+  boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
+  marginTop: theme.spacing(2),
+}));
+
+const RankingItem = styled(Box)<{ rank: number }>(({ theme, rank }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  padding: theme.spacing(1.5),
+  marginBottom: theme.spacing(1),
+  borderRadius: 12,
+  background: rank <= 3 
+    ? `linear-gradient(45deg, ${rank === 1 ? '#ffd700' : rank === 2 ? '#c0c0c0' : '#cd7f32'} 30%, ${rank === 1 ? '#ffed4e' : rank === 2 ? '#e8e8e8' : '#daa520'} 90%)`
+    : 'rgba(103, 126, 234, 0.1)',
+  border: rank <= 3 ? 'none' : '1px solid rgba(103, 126, 234, 0.2)',
+  transition: 'all 0.3s ease',
+  '&:hover': {
+    transform: 'translateY(-2px)',
+    boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+  },
+}));
+
 const formatTime = (seconds: number): string => {
   const mins = Math.floor(seconds / 60);
   const secs = seconds % 60;
@@ -168,6 +199,7 @@ interface Player {
   id: string;
   nickname: string;
   score: number;
+  avatar?: string;
 }
 
 interface GameSettings {
@@ -205,6 +237,7 @@ const WhackAMoleGame: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>();
   const gameAreaRef = useRef<HTMLDivElement>(null);
   const wsManagerRef = useRef<WebSocketManager | null>(null);
+  const soundManagerRef = useRef<SoundManager | null>(null);
 
   // 狀態管理
   const [gameState, setGameState] = useState<GameState>({
@@ -245,6 +278,13 @@ const WhackAMoleGame: React.FC = () => {
     const wsManager = WebSocketManager.getInstance();
     wsManagerRef.current = wsManager;
     
+    // 初始化音效管理器
+    const soundManager = SoundManager.getInstance();
+    soundManagerRef.current = soundManager;
+    
+    // 播放背景音樂 - 使用 mole_leaderboard.wav
+    soundManager.playBackgroundMusic('/assets/sounds/mole_leaderboard.wav');
+    
     // 添加消息處理器
     wsManager.addMessageHandler('whackAMoleGame', (message: any) => {
       console.log('[WhackAMoleGame] Received message:', message);
@@ -270,6 +310,8 @@ const WhackAMoleGame: React.FC = () => {
       // Clear all mole timers when component unmounts or game ends
       Object.values(moleTimersRef.current).forEach(clearTimeout);
       moleTimersRef.current = {};
+      // 停止背景音樂
+      soundManager.stopBackgroundMusic();
     };
   }, [roomId]);
 
@@ -335,7 +377,17 @@ const WhackAMoleGame: React.FC = () => {
     switch (message.type) {
       case 'gameStarted':
       case 'moleStartGame':
-
+        setGameState(prev => ({
+          ...prev,
+          isActive: true,
+          timeLeft: message.data?.gameSettings?.duration || 60,
+          totalTime: message.data?.gameSettings?.duration || 60,
+          settings: message.data?.gameSettings || prev.settings,
+        }));
+        setIsWaitingForGame(false);
+        setShowGameOver(false);
+        // 播放遊戲開始音效
+        soundManagerRef.current?.playSound('gameStart');
         break;
         
       case 'gameend':
@@ -346,7 +398,21 @@ const WhackAMoleGame: React.FC = () => {
           timeLeft: 0,
           moles: [],
         }));
+        // Update leaderboard with final rankings from server
+        if (message.players && Array.isArray(message.players)) {
+          setGameState(prev => ({
+            ...prev,
+            players: message.players.map((player: any) => ({
+              id: player.nickname,
+              nickname: player.nickname,
+              score: player.score,
+              avatar: `/assets/avatars/avatar${Math.floor(Math.random() * 10) + 1}.png`
+            }))
+          }));
+        }
         setShowGameOver(true);
+        // 播放遊戲結束音效
+        soundManagerRef.current?.playSound('gameEnd');
         break;
         
       case 'timeUpdate':
@@ -354,16 +420,21 @@ const WhackAMoleGame: React.FC = () => {
           ...prev,
           timeLeft: message.timeLeft ?? prev.timeLeft,
         }));
+        // 時間警告音效（最後10秒）
+        if (message.timeLeft <= 10 && message.timeLeft > 0) {
+          soundManagerRef.current?.playSound('timeWarning');
+        }
         break;
         
-      // moleSpawned and moleHidden are now handled client-side
-      // case 'moleSpawned':
-      //   // This logic is now client-side
-      //   break;
-        
-      // case 'moleHidden':
-      //   // This logic is now client-side
-      //   break;
+      case 'scoreUpdate':
+      case 'leaderboard':
+        if (message.data?.players) {
+          setGameState(prev => ({
+            ...prev,
+            players: message.data.players,
+          }));
+        }
+        break;
         
       case 'moleScoreUpdate':
         // Check if the score update is for the current player
@@ -373,9 +444,6 @@ const WhackAMoleGame: React.FC = () => {
             score: message.data?.score ?? prev.score,
           }));
         }
-        // Optionally, update a list of all players' scores if needed for a leaderboard on the player screen
-        // For now, we only update the current player's score based on this message type.
-        // The host monitor will display all player scores.
         break;
         
       case 'playerJoined':
@@ -383,6 +451,8 @@ const WhackAMoleGame: React.FC = () => {
           ...prev,
           players: [...prev.players, message.data.player],
         }));
+        // 播放玩家加入音效
+        soundManagerRef.current?.playSound('playerJoin');
         break;
         
       case 'playerLeft':
@@ -390,6 +460,8 @@ const WhackAMoleGame: React.FC = () => {
           ...prev,
           players: prev.players.filter(p => p.id !== message.data.playerId),
         }));
+        // 播放玩家離開音效
+        soundManagerRef.current?.playSound('playerLeave');
         break;
     }
   };
@@ -402,6 +474,9 @@ const WhackAMoleGame: React.FC = () => {
     
     const hole = moleHoles.find(h => h.id === holeId);
     if (!hole || !hole.isActive || hole.isHit) return;
+
+    // 播放擊中音效
+    soundManagerRef.current?.playSound('match');
 
     // 本地立即反饋
     setMoleHoles(prev => 
@@ -453,10 +528,13 @@ const WhackAMoleGame: React.FC = () => {
     );
   }
 
+  // 計算排序後的玩家列表
+  const sortedPlayers = [...gameState.players].sort((a, b) => b.score - a.score);
+
   if (showGameOver) {
     return (
-      <StyledContainer>
-        <Box sx={{ textAlign: 'center', color: 'white' }}>
+      <StyledContainer maxWidth="lg">
+        <Box sx={{ textAlign: 'center', color: 'white', mb: 3 }}>
           <Typography variant="h2" fontWeight="bold" mb={2}>
             🎮 遊戲結束
           </Typography>
@@ -467,6 +545,71 @@ const WhackAMoleGame: React.FC = () => {
             感謝您的參與！
           </Typography>
         </Box>
+        
+        {/* 最終排行榜 */}
+        <LeaderboardCard>
+          <CardContent>
+            <Box display="flex" alignItems="center" mb={3}>
+              <EmojiEvents sx={{ color: '#667eea', mr: 1 }} />
+              <Typography variant="h6" fontWeight="600">
+                最終排行榜
+              </Typography>
+            </Box>
+            
+            {sortedPlayers.length === 0 ? (
+              <Typography variant="body1" color="textSecondary" textAlign="center">
+                暫無排行資料
+              </Typography>
+            ) : (
+              <List sx={{ p: 0 }}>
+                {sortedPlayers.map((player, index) => {
+                  const rank = index + 1;
+                  return (
+                    <RankingItem key={player.id} rank={rank}>
+                      <Box display="flex" alignItems="center" width="100%">
+                        <Box display="flex" alignItems="center" mr={2}>
+                          <Typography
+                            variant="h6"
+                            fontWeight="bold"
+                            sx={{ minWidth: 30 }}
+                          >
+                            #{rank}
+                          </Typography>
+                        </Box>
+                        
+                        <Avatar
+                          src={player.avatar}
+                          sx={{ width: 40, height: 40, mr: 2 }}
+                        >
+                          {player.nickname.charAt(0)}
+                        </Avatar>
+                        
+                        <ListItemText
+                          primary={
+                            <Typography variant="h6" fontWeight="600">
+                              {player.nickname}
+                            </Typography>
+                          }
+                          sx={{ flex: 1 }}
+                        />
+                        
+                        <Chip
+                          label={`${player.score} 分`}
+                          sx={{
+                            backgroundColor: rank <= 3 ? 'rgba(255,255,255,0.3)' : '#667eea',
+                            color: rank <= 3 ? 'white' : 'white',
+                            fontWeight: 'bold',
+                            fontSize: '1rem',
+                          }}
+                        />
+                      </Box>
+                    </RankingItem>
+                  );
+                })}
+              </List>
+            )}
+          </CardContent>
+        </LeaderboardCard>
       </StyledContainer>
     );
   }
@@ -539,6 +682,66 @@ const WhackAMoleGame: React.FC = () => {
         </Grid>
       </GameBoard>
 
+      {/* 即時排行榜 */}
+      {sortedPlayers.length > 0 && (
+        <LeaderboardCard>
+          <CardContent>
+            <Box display="flex" alignItems="center" mb={2}>
+              <EmojiEvents sx={{ color: '#667eea', mr: 1 }} />
+              <Typography variant="h6" fontWeight="600">
+                即時排行榜
+              </Typography>
+            </Box>
+            
+            <List sx={{ p: 0 }}>
+              {sortedPlayers.slice(0, 5).map((player, index) => {
+                const rank = index + 1;
+                return (
+                  <RankingItem key={player.id} rank={rank}>
+                    <Box display="flex" alignItems="center" width="100%">
+                      <Box display="flex" alignItems="center" mr={2}>
+                        <Typography
+                          variant="body1"
+                          fontWeight="bold"
+                          sx={{ minWidth: 25 }}
+                        >
+                          #{rank}
+                        </Typography>
+                      </Box>
+                      
+                      <Avatar
+                        src={player.avatar}
+                        sx={{ width: 32, height: 32, mr: 2 }}
+                      >
+                        {player.nickname.charAt(0)}
+                      </Avatar>
+                      
+                      <ListItemText
+                        primary={
+                          <Typography variant="body1" fontWeight="600">
+                            {player.nickname}
+                          </Typography>
+                        }
+                        sx={{ flex: 1 }}
+                      />
+                      
+                      <Chip
+                        label={`${player.score} 分`}
+                        size="small"
+                        sx={{
+                          backgroundColor: rank <= 3 ? 'rgba(255,255,255,0.3)' : '#667eea',
+                          color: rank <= 3 ? 'white' : 'white',
+                          fontWeight: 'bold',
+                        }}
+                      />
+                    </Box>
+                  </RankingItem>
+                );
+              })}
+            </List>
+          </CardContent>
+        </LeaderboardCard>
+      )}
 
     </StyledContainer>
   );

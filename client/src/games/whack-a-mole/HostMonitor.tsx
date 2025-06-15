@@ -24,6 +24,7 @@ import {
   People,
 } from '@mui/icons-material';
 import WebSocketManager from '../../utils/WebSocketManager';
+import SoundManager from '../../utils/SoundManager';
 
 const StyledContainer = styled(Container)(({ theme }) => ({
   minHeight: '100vh',
@@ -79,6 +80,7 @@ const WhackAMoleHostMonitor: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
   const wsManagerRef = useRef<WebSocketManager | null>(null);
+  const soundManagerRef = useRef<SoundManager | null>(null);
   
   const [gameState, setGameState] = useState<GameState>({
     timeLeft: 0,
@@ -101,6 +103,8 @@ const WhackAMoleHostMonitor: React.FC = () => {
             totalTime: message.data.gameSettings?.duration || 60,
             timeLeft: message.data.gameSettings?.duration || 60,
           }));
+          // 播放遊戲開始音效
+          soundManagerRef.current?.playSound('gameStart');
           break;
           
         case 'timeUpdate':
@@ -108,6 +112,10 @@ const WhackAMoleHostMonitor: React.FC = () => {
             ...prev,
             timeLeft: message.timeLeft ?? prev.timeLeft,
           }));
+          // 時間警告音效（最後10秒）
+          if (message.timeLeft <= 10 && message.timeLeft > 0) {
+            soundManagerRef.current?.playSound('timeWarning');
+          }
           break;
           
         case 'scoreUpdate':
@@ -127,6 +135,8 @@ const WhackAMoleHostMonitor: React.FC = () => {
               players: message.data?.players || [], // Fallback for old format, though server should send map
             }));
           }
+          // 播放分數更新音效
+          soundManagerRef.current?.playSound('scoreUpdate');
           break;
           
         case 'leaderboard':
@@ -153,6 +163,8 @@ const WhackAMoleHostMonitor: React.FC = () => {
             timeLeft: 0,
           }));
           setShowGameOver(true);
+          // 播放遊戲結束音效
+          soundManagerRef.current?.playSound('gameEnd');
           break;
     }
   };
@@ -167,14 +179,24 @@ const WhackAMoleHostMonitor: React.FC = () => {
     const wsManager = WebSocketManager.getInstance();
     wsManagerRef.current = wsManager;
     
+    // 初始化音效管理器
+    const soundManager = SoundManager.getInstance();
+    soundManagerRef.current = soundManager;
+    
+    // 播放背景音樂 - 使用 mole_leaderboard.wav
+    soundManager.playBackgroundMusic('/assets/sounds/mole_leaderboard.wav');
+    
     // 添加消息處理器
-    wsManager.addMessageHandler('whackAMoleHostMonitor', (message: any) => {
+    wsManager.addMessageHandler('whackAMoleHost', (message: any) => {
+      console.log('[WhackAMoleHost] Received message:', message);
       handleWebSocketMessage(message);
     });
-    
+
     return () => {
       // 清理消息處理器
-      wsManager.removeMessageHandler('whackAMoleHostMonitor');
+      //wsManager.removeMessageHandler('whackAMoleHost');
+      // 停止背景音樂
+      soundManager.stopBackgroundMusic();
     };
   }, [roomId]);
 
