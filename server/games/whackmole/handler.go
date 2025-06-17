@@ -4,22 +4,53 @@ import (
 	"log"
 
 	"gaming-platform/core"
+	"gaming-platform/core/interfaces"
 	"gaming-platform/platform/room"
 )
+
+// registrar holds the registration interface
+var registrar interfaces.RegistrationInterface
+
+// SetRegistrar sets the registration interface
+func SetRegistrar(r interfaces.RegistrationInterface) {
+	registrar = r
+	// Register all handlers when registrar is set
+	registerHandlers()
+}
+
+// registerHandlers registers all whack-a-mole game message handlers
+func registerHandlers() {
+	if registrar == nil {
+		return
+	}
+	// Register whack-a-mole game specific message types
+	registrar.RegisterHandler("moleScoreUpdate", HandleWhackAMoleGameMessage)
+	// Register whack-a-mole game start handler
+	registrar.RegisterGameStartHandler("whackmole", HandleWhackAMoleHostStartGame)
+}
 
 // HandleWhackAMoleGameMessage processes whack-a-mole game specific messages
 func HandleWhackAMoleGameMessage(gameRoom *core.Room, client *core.Client, message core.Message) {
 	switch message.Type {
-
 	case "moleScoreUpdate":
 		handleScoreUpdate(gameRoom, client, message)
-
-	case "hostStartGame":
-		handleHostStartGame(gameRoom, client, message)
-
 	default:
 		log.Printf("[WHACKMOLE] Unknown whack-a-mole game message type: %s", message.Type)
 	}
+}
+
+// HandleWhackAMoleHostStartGame handles whack-a-mole game start messages
+func HandleWhackAMoleHostStartGame(gameRoom *core.Room, client *core.Client, message core.Message) {
+	// Extract message data
+	dataMap, ok := message.Data.(map[string]interface{})
+	if !ok {
+		log.Printf("[WHACKMOLE] Invalid message data format")
+		return
+	}
+
+	log.Printf("[WHACKMOLE] Starting whack-a-mole game for host %s", client.Nickname)
+	// Call the existing whack-a-mole websocket handler
+	HandleWhackAMoleWebSocketMessage(gameRoom, client, dataMap)
 }
 
 // handleScoreUpdate processes score update messages from client

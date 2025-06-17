@@ -1,5 +1,5 @@
 // 記憶卡片遊戲主組件
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { Container, Box, CircularProgress, Typography } from '@mui/material';
 import { useGameState } from '../utils/useGameState';
@@ -69,6 +69,9 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
     setWaitingForGameData(true);
   }, []);
 
+  // Create a ref to store sendScoreUpdate function
+  const sendScoreUpdateRef = useRef<((score: number) => void) | null>(null);
+
   // WebSocket 消息處理
   const {
     sendScoreUpdate
@@ -81,8 +84,19 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
       console.log(`[MemoryCardGame] [${new Date().toISOString()}] Game ended:`, {
         data: data,
         roomId: roomId,
-        playerNickname: actualNickname
+        playerNickname: actualNickname,
+        finalClientScore: gameState.score
       });
+      
+      // Send final accumulated score to server when game ends
+      if (!isHost && gameState.score > 0 && sendScoreUpdateRef.current) {
+        console.log(`[MemoryCardGame] [${new Date().toISOString()}] Sending final score to server:`, {
+          finalScore: gameState.score,
+          playerNickname: actualNickname
+        });
+        sendScoreUpdateRef.current(gameState.score);
+      }
+      
       updateGameStatus('ended');
       
       // 從 finalResults 中找到當前玩家的排名
@@ -98,7 +112,7 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
         // 如果沒有 finalResults，使用傳統方式
         updateRank(data.rank || 1, data.totalPlayers || 1);
       }
-    }, [updateGameStatus, updateRank, actualNickname, roomId]),
+    }, [updateGameStatus, updateRank, actualNickname, roomId, gameState.score, isHost]),
     onRankUpdate: useCallback((data: any) => {
       console.log(`[MemoryCardGame] [${new Date().toISOString()}] Rank updated:`, {
         newRank: data.rank,
@@ -111,15 +125,14 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
       updateRank(data.rank, data.totalPlayers);
     }, [updateGameStatus, updateRank, actualNickname, roomId, gameState.rank]),
     onScoreUpdate: useCallback((score: number) => {
-      console.log(`[MemoryCardGame] [${new Date().toISOString()}] Received score update from server:`, {
-        newScore: score,
-        currentScore: gameState.score,
+      console.log(`[MemoryCardGame] [${new Date().toISOString()}] Received score update from server (ignored - using client-side scoring):`, {
+        serverScore: score,
+        currentClientScore: gameState.score,
         playerNickname: actualNickname,
         roomId: roomId
       });
-      // 更新本地分数状态
-      updateScore(score);
-    }, [updateScore, actualNickname, roomId, gameState.score]),
+      // Ignore server score updates - we handle scoring on client side
+    }, [actualNickname, roomId, gameState.score]),
     onTimeUpdate: useCallback((timeLeft: number) => {
       console.log(`[MemoryCardGame] [${new Date().toISOString()}] Received time update from server:`, {
         timeLeft: timeLeft,
@@ -130,15 +143,15 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
       // 更新本地時間狀態
       updateTimeLeft(timeLeft);
     }, [updateTimeLeft, actualNickname, roomId, gameState.timeLeft]),
-    onPlayerListUpdate: useCallback((players: any[]) => {
-      if (!players || !Array.isArray(players)) {
-        console.warn(`[MemoryCardGame] [${new Date().toISOString()}] Received invalid players data:`, players);
+    onLeaderboardUpdate: useCallback((leaderboard: any[]) => {
+      if (!leaderboard || !Array.isArray(leaderboard)) {
+        console.warn(`[MemoryCardGame] [${new Date().toISOString()}] Received invalid leaderboard data:`, leaderboard);
         return;
       }
       // 找到當前玩家並更新頭像
-      const currentPlayer = players.find(p => p.nickname === actualNickname);
+      const currentPlayer = leaderboard.find(p => p.nickname === actualNickname);
       if (currentPlayer && currentPlayer.avatar) {
-        console.log(`[MemoryCardGame] [${new Date().toISOString()}] Updating player avatar:`, {
+        console.log(`[MemoryCardGame] [${new Date().toISOString()}] Updating player avatar from leaderboard:`, {
           playerNickname: actualNickname,
           avatar: currentPlayer.avatar
         });
@@ -146,6 +159,9 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
       }
     }, [actualNickname])
   });
+
+  // Store sendScoreUpdate function in ref
+  sendScoreUpdateRef.current = sendScoreUpdate;
 
   // 客戶端配對檢查機制
   const checkForMatch = useCallback((cards: { suit: string; value: string; positionId: number }[]) => {
@@ -164,34 +180,51 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
     
     if (isMatch) {
       // 配對成功：更新本地遊戲狀態，標記卡片為已配對
-      setGameState(prev => ({
-        ...prev,
-        cards: prev.cards.map(card => {
-          if (card.positionId === card1.positionId || card.positionId === card2.positionId) {
-            return { ...card, isMatched: true, isFlipped: true };
-          }
-          return card;
-        })
-      }));
+      setGameState(prev => {
+        const newScore = !isHost ? (prev.score || 0) + 10 : prev.score;
+        return {
+          ...prev,
+          cards: prev.cards.map(card => {
+            if (card.positionId === card1.positionId || card.positionId === card2.positionId) {
+              return { ...card, isMatched: true, isFlipped: true };
+            }
+            return card;
+          }),
+          score: newScore // Update score locally on client side
+        };
+      });
       
       // 移除本地翻轉狀態
       setLocalFlippedCards(prev => prev.filter(lfc => 
         lfc.positionId !== card1.positionId && lfc.positionId !== card2.positionId
       ));
       
-      // 只有非主機玩家才能得分
-      if (!isHost) {
-        const newScore = (gameState.score || 0) + 10;
-        // 發送分數更新到伺服器
-        sendScoreUpdate(newScore);
-      }
-      
+      const currentScore = !isHost ? (gameState.score || 0) + 10 : gameState.score;
       console.log(`[MemoryCardGame] [${new Date().toISOString()}] Match found! Cards matched locally:`, {
         card1: card1,
         card2: card2,
-        newScore: !isHost ? (gameState.score || 0) + 10 : gameState.score,
-        playerNickname: actualNickname
+        newScore: currentScore,
+        playerNickname: actualNickname,
+        scoreUpdatedLocally: true
       });
+      
+      // 確保 sendScoreUpdateRef.current 存在再調用
+      if (sendScoreUpdateRef.current) {
+        console.log(`[MemoryCardGame] [${new Date().toISOString()}] Sending score update to server:`, {
+          score: currentScore,
+          playerNickname: actualNickname
+        });
+        sendScoreUpdateRef.current(currentScore);
+      }
+      // Send score update every 5 matches (50 points) or if score reaches certain milestones
+       //if (!isHost && currentScore > 0 && (currentScore % 50 === 0 || currentScore >= 100) && sendScoreUpdateRef.current) {
+        //  console.log(`[MemoryCardGame] [${new Date().toISOString()}] Sending milestone score update:`, {
+        //    score: currentScore,
+        //    milestone: currentScore % 50 === 0 ? '50 points' : '100+ points',
+        //    playerNickname: actualNickname
+        //  });
+        //  sendScoreUpdateRef.current(currentScore);
+       //}
       
       // 立即清除選擇和處理狀態
       setSelectedCards([]);
@@ -215,7 +248,7 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
         setIsProcessing(false);
       }, 2000);
     }
-  }, [actualNickname, roomId, isHost, gameState.score, sendScoreUpdate, setGameState, setLocalFlippedCards, setSelectedCards, setIsProcessing]);
+  }, [actualNickname, roomId, isHost, gameState.score, setGameState, setLocalFlippedCards, setSelectedCards, setIsProcessing]);
 
   // 處理卡片點擊
   const handleCardClick = useCallback((positionId: number, suit: string, value: string) => {
@@ -382,6 +415,20 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
       localStorage.setItem(`player_${roomId}`, actualNickname);
     }
   }, [roomId, actualNickname]);
+
+  // Send score updates periodically or when component unmounts
+   useEffect(() => {
+     return () => {
+       // Send final score when component unmounts (if game is still active)
+       if (!isHost && gameState.score > 0 && gameState.status === 'playing' && sendScoreUpdateRef.current) {
+         console.log(`[MemoryCardGame] [${new Date().toISOString()}] Component unmounting, sending final score:`, {
+           finalScore: gameState.score,
+           playerNickname: actualNickname
+         });
+         sendScoreUpdateRef.current(gameState.score);
+       }
+     };
+   }, [gameState.score, gameState.status, isHost, actualNickname]);
 
   // 載入狀態
   console.log(`[MemoryCardGame] waitforgamedata=%s, cards length=%s, gameStatus=%s`, waitingForGameData, gameState.cards.length, gameState.status);

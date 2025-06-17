@@ -13,7 +13,7 @@ interface UseWebSocketHandlerProps {
   onRankUpdate?: (rank: number, totalPlayers: number) => void;
   onGameEnded?: (data: any) => void;
   onTimeUpdate?: (timeLeft: number) => void;
-  onPlayerListUpdate?: (players: any[]) => void;
+  onLeaderboardUpdate?: (leaderboard: any[]) => void;
   onGameStarted?: (data: any) => void;
 }
 
@@ -26,7 +26,7 @@ export const useWebSocketHandler = ({
   onRankUpdate,
   onGameEnded,
   onTimeUpdate,
-  onPlayerListUpdate,
+  onLeaderboardUpdate,
   onGameStarted
 }: UseWebSocketHandlerProps) => {
   const wsManagerRef = useRef<WebSocketManager | null>(null);
@@ -39,7 +39,7 @@ export const useWebSocketHandler = ({
     onRankUpdate,
     onGameEnded,
     onTimeUpdate,
-    onPlayerListUpdate,
+    onLeaderboardUpdate,
     onGameStarted
   });
   
@@ -50,7 +50,7 @@ export const useWebSocketHandler = ({
     onRankUpdate,
     onGameEnded,
     onTimeUpdate,
-    onPlayerListUpdate,
+    onLeaderboardUpdate,
     onGameStarted
   };
 
@@ -112,8 +112,7 @@ export const useWebSocketHandler = ({
               callbacksRef.current.onGameData?.(gameData);
               break;
               
-            case 'gameScoreUpdate':
-            case 'scoreUpdate':
+            case 'memory-scoreupdate':
               console.log(`[MemoryCardGame] [${new Date().toISOString()}] Score update:`, {
                 score: message.score,
                 playerNickname: playerNickname,
@@ -130,9 +129,7 @@ export const useWebSocketHandler = ({
               });
               callbacksRef.current.onRankUpdate?.(message.rank, message.totalPlayers);
               break;
-              
-
-              
+               
             case 'error':
               console.error(`[MemoryCardGame] [${new Date().toISOString()}] Server error:`, {
                 message: message.message,
@@ -146,7 +143,7 @@ export const useWebSocketHandler = ({
               // 錯誤處理已移至客戶端
               break;
               
-            case 'gameEnded':
+            case 'memory-gameended':
               console.log(`[MemoryCardGame] [${new Date().toISOString()}] Game ended:`, {
                 reason: message.reason,
                 finalResults: message.finalResults,
@@ -158,8 +155,7 @@ export const useWebSocketHandler = ({
               callbacksRef.current.onGameEnded?.(message);
               break;
               
-            case 'gameTimeUpdate':
-            case 'timeUpdate':
+            case 'memory-timeupdate':
               console.log(`[MemoryCardGame] [${new Date().toISOString()}] Time update:`, {
                 timeLeft: message.timeLeft,
                 playerNickname: playerNickname,
@@ -169,16 +165,16 @@ export const useWebSocketHandler = ({
               callbacksRef.current.onTimeUpdate?.(message.timeLeft);
               break;
               
-            case 'playerListUpdate':
-              console.log(`[MemoryCardGame] [${new Date().toISOString()}] Player list update:`, {
-                playersCount: message.players?.length,
-                players: message.players,
+            case 'memory-leaderboard':
+              console.log(`[MemoryCardGame] [${new Date().toISOString()}] Leaderboard update:`, {
+                leaderboardCount: message.leaderboard?.length,
+                leaderboard: message.leaderboard,
                 roomId: roomId
               });
-              callbacksRef.current.onPlayerListUpdate?.(message.players);
+              callbacksRef.current.onLeaderboardUpdate?.(message.leaderboard);
               break;
               
-            case 'gameGameStarted':
+            case 'memory-startgame':
               console.log(`[MemoryCardGame] [${new Date().toISOString()}] Game started:`, {
                 playerNickname: playerNickname,
                 roomId: roomId,
@@ -260,9 +256,9 @@ export const useWebSocketHandler = ({
                 callbacksRef.current.onGameData?.(gameData);
               }
               
-              // 處理玩家列表更新
-              if (message.players) {
-                callbacksRef.current.onPlayerListUpdate?.(message.players);
+              // 處理排行榜更新
+              if (message.leaderboard) {
+                callbacksRef.current.onLeaderboardUpdate?.(message.leaderboard);
               }
               break;
               
@@ -301,7 +297,7 @@ export const useWebSocketHandler = ({
     
     if (wsManagerRef.current && isConnectedRef.current) {
       const message = {
-        type: 'scoreUpdate',
+        type: 'memory-scoreupdate',
         data: {
           score
         }

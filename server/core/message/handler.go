@@ -6,9 +6,6 @@ import (
 	"log"
 
 	"gaming-platform/core"
-	"gaming-platform/games/memory"
-	"gaming-platform/games/redenvelope"
-	"gaming-platform/games/whackmole"
 )
 
 // HandleMessage handles incoming WebSocket messages from clients
@@ -28,96 +25,40 @@ func HandleMessage(client *core.Client, room *core.Room, msgData []byte) {
 
 	log.Printf("[DEBUG] handleMessage called with msg type: %s", msgType)
 
-	// Route messages based on type
+	// Check if there's a registered handler for this message type
+	if handler, exists := GetHandler(msgType); exists {
+		// Convert to core.Message format
+		coreMsg := core.Message{
+			Type: msgType,
+			Data: msg,
+		}
+		// Call the registered handler
+		handler(room, client, coreMsg)
+		return
+	}
+
+	// Handle core platform messages that don't need registration
 	switch msgType {
 	case "join":
 		handleJoinMessage(client, room)
 	case "startGameWithNotification":
-		// Handle combined game start with notification
 		handleStartGameWithNotification(client, room, msg)
-	case "hostStartGame":
-		// Delegate to appropriate game handler based on game type
-		log.Printf("[DEBUG] handleHostStartGame called with msg: %v", msg)
-		data, dataOk := msg["data"].(map[string]interface{})
-		if dataOk {
-			if gameType, ok := data["gameType"].(string); ok {
-				switch gameType {
-				case "memory":
-					memory.HandleHostStartGame(room, client, msg)
-				case "redenvelope":
-					coreMsg := core.Message{
-						Type: msgType,
-						Data: msg,
-					}
-					redenvelope.HandleRedEnvelopeGameMessage(room, client, coreMsg)
-				case "whackmole":
-					// Handle whack-a-mole game start
-					whackmole.HandleWhackAMoleWebSocketMessage(room, client, msg)
-				default:
-					log.Printf("[MESSAGE] Unknown game type for hostStartGame: %s", gameType)
-				}
-			} else {
-				// Default to memory game for backward compatibility if gameType is not specified
-				memory.HandleHostStartGame(room, client, msg)
-			}
-		} else {
-			// Default to memory game for backward compatibility if msg["data"] is not a map
-			memory.HandleHostStartGame(room, client, msg)
-		}
-
 	case "notifyPlatformPlayers":
-		// Handle platform player notification
 		handleNotifyPlatformPlayers(client, room, msg)
-	case "cardClick", "flipCard", "twoCardsClick":
-		// Convert message to core.Message format for memory game
-		coreMsg := core.Message{
-			Type: msgType,
-			Data: msg,
-		}
-		// Delegate to memory game handler
-		memory.HandleMemoryGameMessage(room, client, coreMsg)
-	case "scoreUpdate":
-		// Handle score update for both games
-		handleScoreUpdate(client, room, msg)
-	case "collectEnvelope", "gameStart", "gameEnd":
-		// Convert message to core.Message format for red envelope game
-		coreMsg := core.Message{
-			Type: msgType,
-			Data: msg,
-		}
-		// Delegate to red envelope game handler
-		redenvelope.HandleRedEnvelopeGameMessage(room, client, coreMsg)
-	case "moleScoreUpdate":
-		// Handle whack-a-mole game messages
-		whackmole.HandleWhackAMoleWebSocketMessage(room, client, msg)
 	case "hostCloseGame":
-		// Delegate to appropriate game handler based on game type
 		handleHostCloseGame(client, room)
 	default:
 		log.Printf("[WEBSOCKET] Unhandled message type: %s from %s", msgType, client.Nickname)
 	}
 }
 
-// handleJoinMessage handles join message
+// handleJoinMessage handles join messages
 func handleJoinMessage(client *core.Client, room *core.Room) {
-	log.Printf("[ROOM %s] %s joined the room", room.ID, client.Nickname)
-
-	// Send current game state to the joining client
-	if room.GameStarted {
-		// Delegate to specific game handler based on game type
-		// For now, assume memory game
-		memory.SendGameState(client, room)
-	} else {
-		// Send waiting state
-		waitingMsg := map[string]interface{}{
-			"type": "waiting",
-			"data": map[string]interface{}{
-				"message": "Waiting for host to start the game",
-			},
-		}
-		SendMessage(client, waitingMsg)
-	}
-
+	log.Printf("[WEBSOCKET] %s joined room %s", client.Nickname, room.ID)
+	
+	// Game state will be sent by the specific game handlers
+	// No direct game module calls here
+	
 	// Broadcast player list update to all clients in the room
 	broadcastPlayerListUpdate(room)
 }
@@ -198,12 +139,12 @@ func broadcastPlayerListUpdate(room *core.Room) {
 
 // handleNotifyPlatformPlayers handles platform player notification
 func handleNotifyPlatformPlayers(client *core.Client, room *core.Room, msg map[string]interface{}) {
-	log.Printf("[ROOM %s] Host %s notifying platform players", room.ID, client.Nickname)
-
-	// Extract message content
+	log.Printf("[DEBUG] handleNotifyPlatformPlayers called by %s in room %s", client.Nickname, room.ID)
+	
+	// Extract message and game type
 	message, _ := msg["message"].(string)
 	gameType, _ := msg["gameType"].(string)
-
+	
 	// Create platform notification message
 	notificationMsg := map[string]interface{}{
 		"type": "platformNotification",
@@ -213,97 +154,81 @@ func handleNotifyPlatformPlayers(client *core.Client, room *core.Room, msg map[s
 			"roomId":   room.ID,
 		},
 	}
-
-	// Broadcast to all clients in the room
-	BroadcastMessage(room, notificationMsg)
-}
-
-// handleStartGameWithNotification handles combined game start with platform notification
-func handleStartGameWithNotification(client *core.Client, room *core.Room, msg map[string]interface{}) {
-	log.Printf("[DEBUG] handleStartGameWithNotification called by %s in room %s", client.Nickname, room.ID)
-
-	// First, send platform notification to all players
-	message, _ := msg["message"].(string)
-	gameType, _ := msg["gameType"].(string)
-
-	// Create platform notification message
-	notificationMsg := map[string]interface{}{
-		"type": "platformNotification",
-		"data": map[string]interface{}{
-			"message":  message,
-			"gameType": gameType,
-			"roomId":   room.ID,
-		},
-	}
-
-	// Create platform game started message
-	platformGameStartedMsg := map[string]interface{}{
-		"type": "platformGameStarted",
-		"data": map[string]interface{}{
-			"gameType": gameType,
-			"roomId":   room.ID,
-			"message":  message,
-		},
-	}
-
+	
 	// Broadcast notification to all clients in the room
 	BroadcastMessage(room, notificationMsg)
-	BroadcastMessage(room, platformGameStartedMsg)
-
-	// Then start the game with the provided settings
-	if gameType == "memory" {
-		memory.HandleHostStartGame(room, client, msg)
-	} else if gameType == "redenvelope" {
-		coreMsg := core.Message{
-			Type: "gameStart",
-			Data: msg,
-		}
-		redenvelope.HandleRedEnvelopeGameMessage(room, client, coreMsg)
+	
+	// Use the hostStartGame router to handle game start
+	coreMsg := core.Message{
+		Type: "hostStartGame",
+		Data: msg,
 	}
+	HandleHostStartGameRouter(room, client, coreMsg)
+}
+
+// handleStartGameWithNotification handles starting game with notification
+func handleStartGameWithNotification(client *core.Client, room *core.Room, msg map[string]interface{}) {
+	log.Printf("[WEBSOCKET] %s starting game with notification in room %s", client.Nickname, room.ID)
+	
+	// Check if client is host
+	if !client.IsHost {
+		log.Printf("[WEBSOCKET] Non-host %s tried to start game in room %s", client.Nickname, room.ID)
+		return
+	}
+	
+	// Use the hostStartGame router to handle game start
+	coreMsg := core.Message{
+		Type: "hostStartGame",
+		Data: msg,
+	}
+	HandleHostStartGameRouter(room, client, coreMsg)
 }
 
 // handleScoreUpdate handles score updates for different game types
 func handleScoreUpdate(client *core.Client, room *core.Room, msg map[string]interface{}) {
-	// Determine game type based on room state or message content
+	log.Printf("[WEBSOCKET] Score update from %s in room %s", client.Nickname, room.ID)
+	
+	// Try to find a registered handler for scoreUpdate
+	if handler, exists := GetHandler("scoreUpdate"); exists {
+		coreMsg := core.Message{
+			Type: "scoreUpdate",
+			Data: msg,
+		}
+		handler(room, client, coreMsg)
+		return
+	}
+	
+	// Try game-specific score update handlers
 	gameType := determineGameType(room, msg)
-
-	switch gameType {
-	case "memory":
-		// Convert message to core.Message format
+	scoreUpdateType := gameType + "ScoreUpdate"
+	
+	if handler, exists := GetHandler(scoreUpdateType); exists {
 		coreMsg := core.Message{
-			Type: "scoreUpdate",
+			Type: scoreUpdateType,
 			Data: msg,
 		}
-		memory.HandleMemoryGameMessage(room, client, coreMsg)
-	case "redenvelope":
-		// Convert message to core.Message format
-		coreMsg := core.Message{
-			Type: "scoreUpdate",
-			Data: msg,
-		}
-		redenvelope.HandleRedEnvelopeGameMessage(room, client, coreMsg)
-	default:
-		log.Printf("[WEBSOCKET] Unknown game type for scoreUpdate: %s", gameType)
+		handler(room, client, coreMsg)
+	} else {
+		log.Printf("[WEBSOCKET] No handler found for score update type: %s", scoreUpdateType)
 	}
 }
 
 // handleHostCloseGame handles host closing game for different game types
 func handleHostCloseGame(client *core.Client, room *core.Room) {
-	// Determine game type based on room state
-	gameType := determineGameType(room, nil)
-
-	switch gameType {
-	case "memory":
-		memory.HandleHostCloseGame(room, client)
-	case "redenvelope":
-		// Convert to core.Message format
+	log.Printf("[WEBSOCKET] Host %s closing game in room %s", client.Nickname, room.ID)
+	
+	// Check if there's a registered handler for gameEnd
+	if handler, exists := GetHandler("gameEnd"); exists {
 		coreMsg := core.Message{
 			Type: "gameEnd",
 			Data: map[string]interface{}{},
 		}
-		redenvelope.HandleRedEnvelopeGameMessage(room, client, coreMsg)
-	default:
-		log.Printf("[WEBSOCKET] Unknown game type for hostCloseGame: %s", gameType)
+		handler(room, client, coreMsg)
+	} else {
+		// Default behavior: reset room state
+		room.GameStarted = false
+		room.GameData = nil
+		log.Printf("[WEBSOCKET] Game closed in room %s", room.ID)
 	}
 }
 
@@ -320,16 +245,6 @@ func determineGameType(room *core.Room, msg map[string]interface{}) string {
 		}
 		if _, exists := msg["collectedCount"]; exists {
 			return "redenvelope"
-		}
-	}
-
-	// Check room game data type
-	if room.GameData != nil {
-		switch room.GameData.(type) {
-		case *redenvelope.GameData:
-			return "redenvelope"
-		default:
-			return "memory" // Default to memory game
 		}
 	}
 

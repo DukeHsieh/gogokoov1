@@ -6,6 +6,8 @@ import (
 
 	"gaming-platform/core/websocket"
 	"gaming-platform/platform/api"
+	// Import core message to trigger game handler registration
+	_ "gaming-platform/core/message"
 
 	"github.com/gin-gonic/gin"
 )

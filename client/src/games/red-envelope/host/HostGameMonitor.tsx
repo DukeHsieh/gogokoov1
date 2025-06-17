@@ -1,8 +1,24 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import type { Player, GameState } from '../utils/types';
 import WebSocketManager from '../../../utils/WebSocketManager';
 import { CircularProgress, Box, Typography } from '@mui/material';
+
+// 背景音樂
+const playBackgroundMusic = () => {
+  try {
+    const audio = new Audio('/sounds/red_envelope.wav');
+    audio.loop = true;
+    audio.volume = 0.9; // 設置音量為90%
+    audio.play().catch(error => {
+      console.log('背景音樂播放失敗:', error);
+    });
+    return audio;
+  } catch (error) {
+    console.log('背景音樂載入失敗:', error);
+    return null;
+  }
+};
 
 // 格式化時間顯示
 const formatTime = (seconds: number): string => {
@@ -63,6 +79,30 @@ const HostGameMonitor: React.FC = () => {
   
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  
+  // 播放背景音樂
+  useEffect(() => {
+    if (currentGameState.status === 'playing' && !audioRef.current) {
+      audioRef.current = playBackgroundMusic();
+    }
+    
+    // 清理音樂
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, [currentGameState.status]);
+  
+  // 遊戲結束時停止音樂
+  useEffect(() => {
+    if (currentGameState.status === 'ended' && audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+  }, [currentGameState.status]);
 
   // Check if user is host, redirect if not
   useEffect(() => {
@@ -117,10 +157,10 @@ const HostGameMonitor: React.FC = () => {
             type: 'hostStartGame',
             data: {
               gameType: 'redenvelope',
-              gameTime: gameSettings.duration * 60,
-              envelopeCount: gameSettings.envelopeCount,
-              minValue: gameSettings.minValue,
-              maxValue: gameSettings.maxValue
+              duration: gameSettings.duration * 60,
+              spawnInterval: 1000,
+              envelopeLifetime: 5000,
+              envelopeCount: gameSettings.envelopeCount
             }
           };
           
@@ -134,27 +174,25 @@ const HostGameMonitor: React.FC = () => {
           console.log('[HOST] Received message:', message);
 
           switch (message.type) {
-            case 'gameData':
-              console.log('[HOST] Received game data:', message);
+            case 'platformGameStarted':
+              console.log('[HOST] Game started:', message);
               setCurrentGameState(prev => ({
                 ...prev,
                 status: 'playing',
-                timeLeft: message.gameTime || 60
+                timeLeft: message.data?.gameData?.timeLeft || 60
               }));
               break;
 
-            case 'timeLeft':
-            case 'gameTimeUpdate':
             case 'timeUpdate':
-              console.log('[HOST] Received time update:', message.timeLeft, 'type:', message.type);
+              console.log('[HOST] Received time update:', message.data?.timeLeft, 'type:', message.type);
               setCurrentGameState(prev => ({
                 ...prev,
-                timeLeft: message.timeLeft
+                timeLeft: message.data?.timeLeft || prev.timeLeft
               }));
               break;
 
-            case 'gameEnded':
-              console.log('[HOST] Game ended:', message.reason);
+            case 'redEnvelopeGameEnd':
+              console.log('[HOST] Game ended:', message);
               setCurrentGameState(prev => ({
                 ...prev,
                 status: 'ended'
@@ -163,6 +201,27 @@ const HostGameMonitor: React.FC = () => {
               if (timerRef.current) {
                 clearInterval(timerRef.current);
                 timerRef.current = null;
+              }
+              break;
+
+            case 'leaderboard':
+              console.log('[HOST] Received leaderboard update:', message);
+              if (message.data && Array.isArray(message.data)) {
+                const newPlayers = message.data.map((player: any) => ({
+                  id: player.nickname,
+                  nickname: player.nickname,
+                  score: player.score || 0,
+                  isConnected: true,
+                  isHost: false,
+                  avatar: '',
+                  collectedCount: player.collectedCount || 0,
+                  rank: player.rank || 0
+                }));
+                setPlayers(newPlayers);
+                setCurrentGameState(prev => ({
+                  ...prev,
+                  totalPlayers: newPlayers.length
+                }));
               }
               break;
 
@@ -196,14 +255,6 @@ const HostGameMonitor: React.FC = () => {
 
             case 'platformNotification':
               console.log('[HOST] Platform notification:', message.message);
-              break;
-
-            case 'gameGameStarted':
-              console.log('[HOST] Game started notification');
-              setCurrentGameState(prev => ({
-                ...prev,
-                status: 'playing'
-              }));
               break;
 
             default:

@@ -441,11 +441,11 @@ const HostGameMonitor: React.FC = () => {
     }
   };
 
-  // 處理 WebSocket 接收到的玩家列表更新
-  const handlePlayerListUpdate = (data: any) => {
-    if (data.players) {
-      console.log('[HOST MONITOR] Received player data:', data.players);
-      const newPlayers = data.players.map((player: any) => {
+  // 處理 WebSocket 接收到的排行榜更新
+  const handleLeaderboardUpdate = (data: any) => {
+    if (data.leaderboard) {
+      console.log('[HOST MONITOR] Received leaderboard data:', data.leaderboard);
+      const newPlayers = data.leaderboard.map((player: any) => {
         console.log('[HOST MONITOR] Player avatar data:', player.nickname, player.avatar);
         return {
           nickname: player.nickname,
@@ -525,7 +525,7 @@ const HostGameMonitor: React.FC = () => {
         if (isHost && storedGameSettings) {
           console.log('[HOST MONITOR] Sending start game message with settings:', storedGameSettings);
           const startGameMessage = {
-            type: 'hostStartGame',
+            type: 'memory-startgame',
             payload: {
               gameType: 'memory',
               roomId: roomId,
@@ -555,17 +555,12 @@ const HostGameMonitor: React.FC = () => {
               soundManager.playBackgroundMusic();
               break;
 
-            case 'timeLeft':
-              setTimeLeft(message.timeLeft);
-              break;
-
-            case 'gameTimeUpdate':
-            case 'timeUpdate':
+            case 'memory-timeupdate':
               console.log('[HOST MONITOR] Received time update from server:', message.timeLeft, 'type:', message.type);
               setTimeLeft(message.timeLeft);
               break;
 
-            case 'gameEnded':
+            case 'memory-gameended':
               console.log('[HOST MONITOR] Game ended:', message.reason, 'Final results:', message.finalResults);
               setGameEnded(true);
               // 保存最終結果用於顯示前三名
@@ -579,24 +574,12 @@ const HostGameMonitor: React.FC = () => {
               soundManager.stopBackgroundMusic();
               break;
 
-            case 'playerListUpdate':
-              console.log('[HOST MONITOR] Received player list update:', message);
-              handlePlayerListUpdate(message.data);
+            case 'memory-leaderboard':
+              console.log('[HOST MONITOR] Received leaderboard update:', message);
+              handleLeaderboardUpdate(message);
               break;
 
-            case 'cardsMatched':
-              // 當有玩家配對成功時播放音效
-              if (message.player !== playerNickname) {
-                soundManager.playSound('scoreUpdate', 0.4);
-              }
-              break;
-
-            case 'platformNotification':
-              console.log('[HOST MONITOR] Received platform notification:', message.data);
-              // 可以在這裡處理平台通知，例如顯示通知訊息
-              break;
-
-            case 'gameGameStarted':
+            case 'memory-startgame':
               console.log('[HOST MONITOR] Game started notification:', message);
               // 遊戲開始通知，可以更新 UI 狀態
               if (message.gameData) {
@@ -782,6 +765,78 @@ const HostGameMonitor: React.FC = () => {
       {/* 競爭動物區域 */}
       <CompetingAnimals players={nonHostPlayers} />
 
+      {/* 最終排名 - 置中顯示 */}
+      {gameEnded && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
+          <Card elevation={6} sx={{ 
+            maxWidth: 600,
+            width: '100%',
+            background: 'linear-gradient(135deg, rgba(255, 215, 0, 0.9) 0%, rgba(255, 193, 7, 0.9) 100%)',
+            backdropFilter: 'blur(10px)',
+            borderRadius: 3,
+            border: '3px solid #FFD700'
+          }}>
+            <CardContent>
+              <Typography variant="h4" gutterBottom sx={{ 
+                textAlign: 'center',
+                fontWeight: 'bold',
+                color: '#B8860B'
+              }}>
+                🏆 最終排名 🏆
+              </Typography>
+              <TableContainer>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: 'bold', color: '#B8860B' }}>排名</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold', color: '#B8860B' }}>暱稱</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold', color: '#B8860B' }}>分數</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {finalResults.map((player, index) => {
+                      const rank = index + 1;
+                      return (
+                        <TableRow key={index} sx={{
+                          backgroundColor: rank === 1 ? 'rgba(255, 215, 0, 0.3)' :
+                                         rank === 2 ? 'rgba(192, 192, 192, 0.3)' :
+                                         rank === 3 ? 'rgba(205, 127, 50, 0.3)' : 'transparent'
+                        }}>
+                          <TableCell sx={{ fontWeight: 'bold' }}>
+                            {rank === 1 && '🥇'}
+                            {rank === 2 && '🥈'}
+                            {rank === 3 && '🥉'}
+                            {rank > 3 && rank}
+                          </TableCell>
+                          <TableCell sx={{ fontWeight: 'bold' }}>{player.nickname}</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold' }}>{player.score}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+              <Button
+                variant="contained"
+                color="primary"
+                fullWidth
+                sx={{ 
+                  mt: 2,
+                  background: 'linear-gradient(45deg, #4CAF50, #8BC34A)',
+                  fontWeight: 'bold',
+                  '&:hover': {
+                    background: 'linear-gradient(45deg, #388E3C, #689F38)'
+                  }
+                }}
+                onClick={() => navigate(`/games/${roomId}`)}
+              >
+                返回主頁
+              </Button>
+            </CardContent>
+          </Card>
+        </Box>
+      )}
+
       <Grid container spacing={3}>
         <Grid item xs={12} md={8}>
           <Paper elevation={6} sx={{ 
@@ -808,7 +863,6 @@ const HostGameMonitor: React.FC = () => {
                     <TableCell sx={{ fontWeight: 'bold', color: '#2E7D32' }}>頭像</TableCell>
                     <TableCell sx={{ fontWeight: 'bold', color: '#2E7D32' }}>暱稱</TableCell>
                     <TableCell sx={{ fontWeight: 'bold', color: '#2E7D32' }}>分數</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold', color: '#2E7D32' }}>配對成功數</TableCell>
                     <TableCell sx={{ fontWeight: 'bold', color: '#2E7D32' }}>狀態</TableCell>
                   </TableRow>
                 </TableHead>
@@ -855,7 +909,6 @@ const HostGameMonitor: React.FC = () => {
                           }}>
                             {player.score}
                           </TableCell>
-                          <TableCell>{player.matchedPairs}</TableCell>
                           <TableCell>
                             <Chip
                               label={getPlayerStatus(player.isConnected)}
@@ -900,11 +953,7 @@ const HostGameMonitor: React.FC = () => {
                   競技者: {nonHostPlayers.length}
                 </Typography>
               </Box>
-              <Box sx={{ p: 1, backgroundColor: 'rgba(156, 39, 176, 0.1)', borderRadius: 2, mb: 1 }}>
-                <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#9C27B0' }}>
-                  總配對數: {gameStats.totalPairs}
-                </Typography>
-              </Box>
+
               <Box sx={{ p: 1, backgroundColor: 'rgba(255, 152, 0, 0.1)', borderRadius: 2 }}>
                 <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#FF9800' }}>
                   遊戲時長: {gameStats.gameTime / 60} 分鐘
@@ -913,73 +962,7 @@ const HostGameMonitor: React.FC = () => {
             </CardContent>
           </Card>
 
-          {gameEnded && (
-            <Card elevation={6} sx={{ 
-              mt: 3,
-              background: 'linear-gradient(135deg, rgba(255, 215, 0, 0.9) 0%, rgba(255, 193, 7, 0.9) 100%)',
-              backdropFilter: 'blur(10px)',
-              borderRadius: 3,
-              border: '3px solid #FFD700'
-            }}>
-              <CardContent>
-                <Typography variant="h5" gutterBottom sx={{ 
-                  textAlign: 'center',
-                  fontWeight: 'bold',
-                  color: '#B8860B'
-                }}>
-                  🏆 最終排名 🏆
-                </Typography>
-                <TableContainer>
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell sx={{ fontWeight: 'bold', color: '#B8860B' }}>排名</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold', color: '#B8860B' }}>暱稱</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold', color: '#B8860B' }}>分數</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {finalResults.map((player, index) => {
-                        const rank = index + 1;
-                        return (
-                          <TableRow key={index} sx={{
-                            backgroundColor: rank === 1 ? 'rgba(255, 215, 0, 0.3)' :
-                                           rank === 2 ? 'rgba(192, 192, 192, 0.3)' :
-                                           rank === 3 ? 'rgba(205, 127, 50, 0.3)' : 'transparent'
-                          }}>
-                            <TableCell sx={{ fontWeight: 'bold' }}>
-                              {rank === 1 && '🥇'}
-                              {rank === 2 && '🥈'}
-                              {rank === 3 && '🥉'}
-                              {rank > 3 && rank}
-                            </TableCell>
-                            <TableCell sx={{ fontWeight: 'bold' }}>{player.nickname}</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold' }}>{player.score}</TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  fullWidth
-                  sx={{ 
-                    mt: 2,
-                    background: 'linear-gradient(45deg, #4CAF50, #8BC34A)',
-                    fontWeight: 'bold',
-                    '&:hover': {
-                      background: 'linear-gradient(45deg, #388E3C, #689F38)'
-                    }
-                  }}
-                  onClick={() => navigate(`/games/${roomId}`)}
-                >
-                  返回主頁
-                </Button>
-              </CardContent>
-            </Card>
-          )}
+
         </Grid>
       </Grid>
     </Container>

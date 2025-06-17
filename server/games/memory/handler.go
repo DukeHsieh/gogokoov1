@@ -2,21 +2,56 @@
 package memory
 
 import (
-	"encoding/json"
 	"log"
 
 	"gaming-platform/core"
+	"gaming-platform/core/interfaces"
 	"gaming-platform/platform/room"
 )
+
+// registrar holds the registration interface
+var registrar interfaces.RegistrationInterface
+
+// SetRegistrar sets the registration interface
+func SetRegistrar(r interfaces.RegistrationInterface) {
+	registrar = r
+	// Register all handlers when registrar is set
+	registerHandlers()
+}
+
+// registerHandlers registers all memory game message handlers
+func registerHandlers() {
+	if registrar == nil {
+		return
+	}
+	// Register memory game specific message types
+	registrar.RegisterHandler("memory-scoreupdate", HandleMemoryGameMessage)
+	// Register memory game start handler with specific message type
+	registrar.RegisterHandler("memory-startgame", HandleMemoryHostStartGame)
+}
 
 // HandleMemoryGameMessage processes memory game specific messages
 func HandleMemoryGameMessage(gameRoom *core.Room, client *core.Client, message core.Message) {
 	switch message.Type {
-	case "scoreUpdate":
+	case "memory-scoreupdate":
 		handleScoreUpdate(gameRoom, client, message)
 	default:
 		log.Printf("[MEMORY] Unknown memory game message type: %s", message.Type)
 	}
+}
+
+// HandleMemoryHostStartGame handles memory game start messages
+func HandleMemoryHostStartGame(gameRoom *core.Room, client *core.Client, message core.Message) {
+	// Extract message data
+	dataMap, ok := message.Data.(map[string]interface{})
+	if !ok {
+		log.Printf("[MEMORY] Invalid message data format")
+		return
+	}
+
+	log.Printf("[MEMORY] Starting memory game for host %s", client.Nickname)
+	// Call the existing memory game start handler
+	HandleHostStartGame(gameRoom, client, dataMap)
 }
 
 // handleScoreUpdate processes score update messages from client
@@ -54,84 +89,45 @@ func handleScoreUpdate(gameRoom *core.Room, client *core.Client, message core.Me
 		client.Score = int(score)
 		log.Printf("[MEMORY] Updated score for %s: %d", client.Nickname, client.Score)
 
-		// Broadcast game score update to all clients
-		room.BroadcastToRoom(gameRoom, map[string]interface{}{
-			"type":   "gameScoreUpdate",
-			"player": client.Nickname,
-			"score":  client.Score,
-		})
-		
-		// Also send legacy scoreUpdate for backward compatibility
-		room.BroadcastToRoom(gameRoom, map[string]interface{}{
-			"type":   "scoreUpdate",
-			"player": client.Nickname,
-			"score":  client.Score,
-		})
-
-		// Broadcast updated player list when score changes
-		room.BroadcastPlayerListUpdate(gameRoom)
+		// Send updated leaderboard to host
+		sendPlayerLeaderboardToHost(gameRoom)
 	} else {
 		log.Printf("[MEMORY] Ignoring score update for host player %s", client.Nickname)
 	}
 }
 
-// SendGameState sends the current memory game state to a client
-func SendGameState(client *core.Client, gameRoom *core.Room) {
-	if gameRoom.GameData == nil {
-		log.Printf("[MEMORY] No game data available for room %s", gameRoom.ID)
+// sendPlayerLeaderboardToHost sends the current player leaderboard to the host
+func sendPlayerLeaderboardToHost(gameRoom *core.Room) {
+	if gameRoom.HostClient == nil {
+		log.Printf("[MEMORY] No host found in room %s", gameRoom.ID)
 		return
 	}
 
-	// Parse game data
-	var gameData GameData
-	gameDataBytes, ok := gameRoom.GameData.([]byte)
-	if !ok {
-		log.Printf("[MEMORY] Invalid game data type")
-		return
-	}
-	if err := json.Unmarshal(gameDataBytes, &gameData); err != nil {
-		log.Printf("[MEMORY] Error parsing game data: %v", err)
-		return
+	// Create leaderboard data
+	type PlayerScore struct {
+		Nickname string `json:"nickname"`
+		Score    int    `json:"score"`
+		IsHost   bool   `json:"isHost"`
 	}
 
-	// Send game state to client
-	response := map[string]interface{}{
-		"type":     "gameData",
-		"gameData": gameData,
-		"gameTime": gameRoom.GameTime,
-		"players":  getPlayerList(gameRoom),
-	}
-
-	responseBytes, err := json.Marshal(response)
-	if err != nil {
-		log.Printf("[MEMORY] Error marshaling game state: %v", err)
-		return
-	}
-
-	client.Mutex.Lock()
-	err = client.Conn.WriteMessage(1, responseBytes)
-	client.Mutex.Unlock()
-
-	if err != nil {
-		log.Printf("[MEMORY] Error sending game state to %s: %v", client.Nickname, err)
-	}
-}
-
-// getPlayerList creates a list of players with their scores
-func getPlayerList(gameRoom *core.Room) []map[string]interface{} {
-	players := []map[string]interface{}{}
-
+	var leaderboard []PlayerScore
 	for client := range gameRoom.AllClients {
-		player := map[string]interface{}{
-			"nickname": client.Nickname,
-			"score":    client.Score,
-			"isHost":   client.IsHost,
-			"avatar":   client.Avatar,
-		}
-		players = append(players, player)
+		leaderboard = append(leaderboard, PlayerScore{
+			Nickname: client.Nickname,
+			Score:    client.Score,
+			IsHost:   client.IsHost,
+		})
 	}
 
-	return players
+	// Send leaderboard to host
+	leaderboardMessage := map[string]interface{}{
+		"type":        "memory-leaderboard",
+		"leaderboard": leaderboard,
+		"roomId":      gameRoom.ID,
+	}
+
+	room.BroadcastToHost(gameRoom, leaderboardMessage)
+	log.Printf("[MEMORY] Sent leaderboard to host %s in room %s", gameRoom.HostClient.Nickname, gameRoom.ID)
 }
 
 // HandleHostStartGame starts a memory game when the host initiates it
@@ -166,28 +162,4 @@ func HandleHostStartGame(gameRoom *core.Room, client *core.Client, msgData map[s
 
 	// Start the memory game with settings
 	StartMemoryGame(gameRoom, numPairs, gameTime)
-}
-
-// HandleHostCloseGame closes a memory game when the host ends it
-func HandleHostCloseGame(gameRoom *core.Room, client *core.Client) {
-	if !client.IsHost {
-		log.Printf("[MEMORY] Non-host %s tried to close game in room %s", client.Nickname, gameRoom.ID)
-		return
-	}
-
-	if !gameRoom.GameStarted {
-		log.Printf("[MEMORY] No game to close in room %s", gameRoom.ID)
-		return
-	}
-
-	// End the game
-	HandleGameEnd(gameRoom)
-
-	// Broadcast game closed message
-	room.BroadcastToRoom(gameRoom, map[string]interface{}{
-		"type":    "gameEnded",
-		"message": "Game was closed by the host",
-	})
-
-	log.Printf("[MEMORY] Game closed by host %s in room %s", client.Nickname, gameRoom.ID)
 }

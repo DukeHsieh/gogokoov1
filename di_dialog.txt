@@ -1,4 +1,53 @@
+吉卜力
 
+
+remove memory host monitor "配對成功數" and "總配對數"，
+將“最終排名”出現的位置，放在畫面上方，置中,
+請修改相關程式
+
+memory card msgtype 'scoreupdate' change to 'memory-scoreupdate',
+modify all memory game client server related programs
+
+memory card msgtype 'hoststartgame' change to 'memory-startgame',
+modify all memory game client server related code
+
+
+重構server core message handler,
+每一個message都有自己 獨一無二的msgtype,
+core handler 要能根據不同的msgtype,
+呼叫對應的 platform game handler,
+core handler 不能import 其他platform game的程式, 
+它是最底層, 要等待訊息的程式要自己跟core handler註冊,
+core handler有個儲存體存放所有的handler,
+key 是 msgtype,
+請修改專案所有相關檔案, 確保程式依造這個方式運行且正常
+
+
+重整red-envelope網路通訊 封包類型與處理方式,
+完整的參考mole遊戲,
+從主持人發送遊戲開始, 玩家每次得分, server處理計時並通知 host and players,
+遊戲結束server通知host and player,
+參考mole client server, 然後修改 red-envelope所有client server程式
+
+
+移除server端跟 控制紅包,傳遞紅包,產生紅包 的所有程式,
+所有的紅包遊戲都在 player 紅包遊戲內完成,
+player紅包遊戲畫面中只留下 紅包 動物,
+移除裝飾的所有背景物件,
+紅包掉落的速度再慢一些,
+player紅包遊戲畫面中 要有倒數時間與分數,
+host monitor背景音樂使用red_envelope.wav 
+
+
+重新製作 搶紅包 遊戲player端程式,
+紅包會隨機從上面掉下來, 從上而下掉落,
+畫面底下有一隻 吉卜力狗狗 接住紅包,
+玩家可以操作往左往右, 狗狗 隨著移動,
+狗狗接住紅包得分, 紅包掉在地上就消失,
+所有的遊戲規則都由client控制,
+總分數也是由client自己計算,
+每次接到紅包就通知host更新排行榜,
+修改所有搶紅包client server中相關處理的程式
 
 
 play mole_leaderboard as mole host monitor background music,

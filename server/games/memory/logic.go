@@ -83,7 +83,7 @@ func HandleGameEnd(gameRoom *core.Room) {
 
 	// Broadcast game end to all clients
 	room.BroadcastToRoom(gameRoom, map[string]interface{}{
-		"type":    "gameEnded",
+		"type":    "memory-gameended",
 		"scores":  playerScores,
 		"message": "Memory game completed!",
 	})
@@ -155,13 +155,7 @@ func StartMemoryGame(gameRoom *core.Room, numPairs int, gameTime int) {
 				gameRoom.GameTime--
 				// Broadcast game time update every second
 				room.BroadcastToRoom(gameRoom, map[string]interface{}{
-					"type":     "gameTimeUpdate",
-					"timeLeft": gameRoom.GameTime,
-				})
-
-				// Also send legacy timeUpdate for backward compatibility
-				room.BroadcastToRoom(gameRoom, map[string]interface{}{
-					"type":     "timeUpdate",
+					"type":     "memory-timeupdate",
 					"timeLeft": gameRoom.GameTime,
 				})
 
@@ -194,12 +188,6 @@ func StartMemoryGame(gameRoom *core.Room, numPairs int, gameTime int) {
 		"gameData": clientGameData,
 		"message":  "Memory game started!",
 	})
-
-	// Also send gameData message for compatibility
-	//room.BroadcastToRoom(gameRoom, map[string]interface{}{
-	//	"type":     "gameData",
-	//	"gameData": clientGameData,
-	//})
 
 	log.Printf("[MEMORY] Memory game started for room %s with %d pairs and %d seconds", gameRoom.ID, numPairs, gameTime)
 }
