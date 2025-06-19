@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import {
   Container,
   Box,
@@ -23,6 +23,7 @@ import {
   Timer,
   Speed,
   GpsFixed,
+  SportsEsports,
 } from '@mui/icons-material';
 import WebSocketManager from '../../utils/WebSocketManager';
 
@@ -51,6 +52,17 @@ const SettingItem = styled(Paper)(({ theme }) => ({
   background: 'rgba(255, 255, 255, 0.8)',
 }));
 
+const WelcomeCard = styled(Card)(({ theme }) => ({
+  borderRadius: 16,
+  boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
+  background: 'rgba(255, 255, 255, 0.95)',
+  backdropFilter: 'blur(10px)',
+  padding: theme.spacing(4),
+  textAlign: 'center',
+  maxWidth: 500,
+  width: '100%',
+}));
+
 interface GameSettings {
   duration: number;
   moleSpawnInterval: number;
@@ -60,6 +72,7 @@ interface GameSettings {
 
 const WhackAMoleGameSettings: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { roomId } = useParams<{ roomId: string }>();
   const wsManagerRef = useRef<WebSocketManager | null>(null);
   
@@ -69,6 +82,11 @@ const WhackAMoleGameSettings: React.FC = () => {
     moleLifetime: 2000, // 地鼠存活時間（毫秒）
     totalMoles: 9, // 地鼠洞數量
   });
+  
+  const [showSettings, setShowSettings] = useState(false);
+  
+  // Check if coming from host page or directly to settings
+  const isFromHostPage = location.state?.fromHostPage || false;
 
   // 組件初始化時使用 platform 建立好的連接
   useEffect(() => {
@@ -79,7 +97,26 @@ const WhackAMoleGameSettings: React.FC = () => {
 
     const wsManager = WebSocketManager.getInstance();
     wsManagerRef.current = wsManager;
-  }, [roomId]);
+    
+    // If coming from host page, show settings directly
+    if (isFromHostPage) {
+      setShowSettings(true);
+    }
+  }, [roomId, isFromHostPage]);
+  
+  const handleGoToSettings = async () => {
+    try {
+      // 检查是否有现有的房间连接，如果有则重用，否则生成新的6位数房间号码
+      const wsManager = WebSocketManager.getInstance();
+      const existingGameState = wsManager.getGameState();
+      const finalRoomId = existingGameState.roomId || roomId || Math.floor(100000 + Math.random() * 900000).toString();
+      
+      setShowSettings(true);
+    } catch (error) {
+       console.error('Error navigating to settings:', error);
+       setShowSettings(true);
+     }
+   };
 
   const handleStartGame = () => {
     if (wsManagerRef.current) {
@@ -102,6 +139,43 @@ const WhackAMoleGameSettings: React.FC = () => {
       [key]: value,
     }));
   };
+
+  // Render welcome screen if not showing settings
+  if (!showSettings) {
+    return (
+      <StyledContainer>
+        <WelcomeCard>
+          <Box display="flex" alignItems="center" justifyContent="center" mb={3}>
+            <SportsEsports sx={{ fontSize: 48, color: '#667eea', mr: 2 }} />
+            <Typography variant="h4" fontWeight="bold" color="#667eea">
+              打地鼠遊戲
+            </Typography>
+          </Box>
+          
+          <Typography variant="h6" color="textSecondary" mb={4}>
+            歡迎來到打地鼠遊戲！
+          </Typography>
+          
+          <Button
+            variant="contained"
+            size="large"
+            startIcon={<Settings />}
+            onClick={handleGoToSettings}
+            fullWidth
+            sx={{
+              background: 'linear-gradient(45deg, #667eea 30%, #764ba2 90%)',
+              borderRadius: 3,
+              py: 1.5,
+              fontSize: '1.1rem',
+              fontWeight: 'bold',
+            }}
+          >
+            進入遊戲設定
+          </Button>
+        </WelcomeCard>
+      </StyledContainer>
+    );
+  }
 
   return (
     <StyledContainer>

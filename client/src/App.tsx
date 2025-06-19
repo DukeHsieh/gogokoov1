@@ -15,7 +15,7 @@ import { HostGameMonitor, CreateGame } from './games';
 import { GamePage } from './games/memory-card';
 import { CreateRedEnvelopeGame, HostGameMonitor as RedEnvelopeHostGameMonitor } from './games/red-envelope';
 import GameControl from './games/red-envelope/player/GameControl';
-import { WhackAMoleHost, WhackAMoleGame, GameSettings, HostMonitor } from './games/whack-a-mole';
+import { WhackAMoleGame, GameSettings, HostMonitor } from './games/whack-a-mole';
 
 const theme = createTheme({
   palette: {
@@ -71,7 +71,7 @@ function App() {
             <Route path="/games/memory-card/host/:roomId" element={<HostGameMonitor />} />
             <Route path="/games/red-envelope/host/:roomId" element={<RedEnvelopeHostGameMonitor />} />
             <Route path="/games/red-envelope/game/:roomId" element={<GameControl />} />
-            <Route path="/games/whack-a-mole/host/:roomId" element={<WhackAMoleHost />} />
+            <Route path="/games/whack-a-mole/host/:roomId" element={<GameSettings />} />
             <Route path="/games/whack-a-mole/settings/:roomId" element={<GameSettings />} />
             <Route path="/games/whack-a-mole/monitor/:roomId" element={<HostMonitor />} />
             <Route path="/games/whack-a-mole/game/:roomId" element={<WhackAMoleGame />} />
