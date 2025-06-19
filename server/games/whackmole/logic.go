@@ -31,7 +31,7 @@ func startTimeUpdates(gameRoom *core.Room, duration int) {
 
 				// Send time update
 				room.BroadcastToRoom(gameRoom, map[string]interface{}{
-					"type":     "timeUpdate",
+					"type":     "mole-timeupdate",
 					"gameType": "whackmole",
 					"timeLeft": gameRoom.GameTime,
 				})
@@ -60,24 +60,15 @@ func UpdatePlayerScore(gameRoom *core.Room, playerID, nickname string, totalScor
 		if client.Nickname == nickname {
 			client.Score = totalScore
 			log.Printf("[WHACKMOLE] Player %s score updated to %d in room %s", nickname, totalScore, gameRoom.ID)
-			
-			// Broadcast score update
-			room.BroadcastToRoom(gameRoom, map[string]interface{}{
-				"type":   "scoreUpdate",
-				"player": nickname,
-				"score":  totalScore,
-			})
-			
-			// Broadcast leaderboard update
-			leaderboard := calculateLeaderboard(gameRoom)
-			room.BroadcastToRoom(gameRoom, map[string]interface{}{
-				"type":    "leaderboard",
-				"players": leaderboard,
-			})
-			
 			break
 		}
 	}
+	// Broadcast leaderboard update
+	leaderboard := calculateLeaderboard(gameRoom)
+	room.BroadcastToRoom(gameRoom, map[string]interface{}{
+		"type":    "mole-leaderboard",
+		"players": leaderboard,
+	})
 }
 
 // calculateLeaderboard calculates and returns player rankings
@@ -123,15 +114,13 @@ func HandleGameEnd(gameRoom *core.Room) {
 
 	// Broadcast game end to all clients
 	room.BroadcastToRoom(gameRoom, map[string]interface{}{
-		"type":    "moleGameEnd",
+		"type":    "mole-gameend",
 		"players": leaderboard,
 		"message": "Whack-a-mole game completed!",
 	})
 
 	log.Printf("[WHACKMOLE] Final scores for room %s: %+v", gameRoom.ID, leaderboard)
 }
-
-
 
 // StartWhackAMoleGame initializes and starts a whack-a-mole game
 func StartWhackAMoleGame(gameRoom *core.Room, settings GameSettings) {

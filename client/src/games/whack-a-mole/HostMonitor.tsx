@@ -92,11 +92,10 @@ const WhackAMoleHostMonitor: React.FC = () => {
 
   // 處理 WebSocket 消息
   const handleWebSocketMessage = (message: any) => {
-    console.log('[HostMonitor] Received message:', message);
+    //console.log('[HostMonitor] Received message:', message);
     
     switch (message.type) {
-        case 'gameStarted':
-        case 'moleStartGame':
+        case 'mole-startgame':
           setGameState(prev => ({
             ...prev,
             isActive: true,
@@ -107,7 +106,8 @@ const WhackAMoleHostMonitor: React.FC = () => {
           soundManagerRef.current?.playSound('gameStart');
           break;
           
-        case 'timeUpdate':
+        case 'mole-timeupdate':
+          // console.log('[HostMonitor] Time update:', message.timeLeft);
           setGameState(prev => ({
             ...prev,
             timeLeft: message.timeLeft ?? prev.timeLeft,
@@ -118,28 +118,27 @@ const WhackAMoleHostMonitor: React.FC = () => {
           }
           break;
           
-        case 'scoreUpdate':
-        case 'moleScoreupdate':
-          // The server now sends a map of PlayerScore objects
-          // We need to convert this map to an array for the HostMonitor state
-          const playersMap = message.data?.players as Record<string, Player>;
-          if (playersMap) {
-            const playersArray = Object.values(playersMap).map(p => ({ ...p, id: p.id || '' })); // Ensure id is present
-            setGameState(prev => ({
-              ...prev,
-              players: playersArray,
-            }));
-          } else {
-            setGameState(prev => ({
-              ...prev,
-              players: message.data?.players || [], // Fallback for old format, though server should send map
-            }));
-          }
-          // 播放分數更新音效
-          soundManagerRef.current?.playSound('scoreUpdate');
-          break;
+        // case 'mole-scoreupdate':
+        //   // The server now sends a map of PlayerScore objects
+        //   // We need to convert this map to an array for the HostMonitor state
+        //   const playersMap = message.data?.players as Record<string, Player>;
+        //   if (playersMap) {
+        //     const playersArray = Object.values(playersMap).map(p => ({ ...p, id: p.id || '' })); // Ensure id is present
+        //     setGameState(prev => ({
+        //       ...prev,
+        //       players: playersArray,
+        //     }));
+        //   } else {
+        //     setGameState(prev => ({
+        //       ...prev,
+        //       players: message.data?.players || [], // Fallback for old format, though server should send map
+        //     }));
+        //   }
+        //   // 播放分數更新音效
+        //   soundManagerRef.current?.playSound('scoreUpdate');
+        //   break;
           
-        case 'leaderboard':
+        case 'mole-leaderboard':
           if (message.players) {
             const playersMap = message.players as Record<string, any>;
             const playersArray = Object.values(playersMap).map((p: any) => ({
@@ -155,8 +154,7 @@ const WhackAMoleHostMonitor: React.FC = () => {
           }
           break;
           
-        case 'gameend':
-        case 'moleGameEnd':
+        case 'mole-gameend':
           setGameState(prev => ({
             ...prev,
             isActive: false,
@@ -188,7 +186,7 @@ const WhackAMoleHostMonitor: React.FC = () => {
     
     // 添加消息處理器
     wsManager.addMessageHandler('whackAMoleHost', (message: any) => {
-      console.log('[WhackAMoleHost] Received message:', message);
+      //console.log('[WhackAMoleHost] Received message:', message);
       handleWebSocketMessage(message);
     });
 

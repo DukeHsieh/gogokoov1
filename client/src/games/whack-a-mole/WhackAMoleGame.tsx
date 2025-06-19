@@ -287,7 +287,7 @@ const WhackAMoleGame: React.FC = () => {
     
     // 添加消息處理器
     wsManager.addMessageHandler('whackAMoleGame', (message: any) => {
-      console.log('[WhackAMoleGame] Received message:', message);
+      //console.log('[WhackAMoleGame] Received message:', message);
       handleWebSocketMessage(message);
     });
 
@@ -375,8 +375,7 @@ const WhackAMoleGame: React.FC = () => {
   // 處理 WebSocket 消息
   const handleWebSocketMessage = (message: any) => {
     switch (message.type) {
-      case 'gameStarted':
-      case 'moleStartGame':
+      case 'mole-startgame':
         setGameState(prev => ({
           ...prev,
           isActive: true,
@@ -390,8 +389,7 @@ const WhackAMoleGame: React.FC = () => {
         soundManagerRef.current?.playSound('gameStart');
         break;
         
-      case 'gameend':
-      case 'moleGameEnd':
+      case 'mole-gameend':
         setGameState(prev => ({
           ...prev,
           isActive: false,
@@ -415,7 +413,8 @@ const WhackAMoleGame: React.FC = () => {
         soundManagerRef.current?.playSound('gameEnd');
         break;
         
-      case 'timeUpdate':
+      case 'mole-timeupdate':
+        // console.log('[WhackAMoleGame] Time update:', message.timeLeft);
         setGameState(prev => ({
           ...prev,
           timeLeft: message.timeLeft ?? prev.timeLeft,
@@ -426,47 +425,18 @@ const WhackAMoleGame: React.FC = () => {
         }
         break;
         
-      case 'scoreUpdate':
-      case 'leaderboard':
-        if (message.data?.players) {
-          setGameState(prev => ({
-            ...prev,
-            players: message.data.players,
-          }));
-        }
-        break;
+      // case 'mole-scoreupdate':
+      //   // Check if the score update is for the current player
+      //   if (message.data?.playerId === (wsManagerRef.current as any)?.gameState?.playerNickname) {
+      //     setGameState(prev => ({
+      //       ...prev,
+      //       score: message.data?.score ?? prev.score,
+      //     }));
+      //   }
+      //   break;
         
-      case 'moleScoreUpdate':
-        // Check if the score update is for the current player
-        if (message.data?.playerId === (wsManagerRef.current as any)?.gameState?.playerNickname) {
-          setGameState(prev => ({
-            ...prev,
-            score: message.data?.score ?? prev.score,
-          }));
-        }
-        break;
-        
-      case 'playerJoined':
-        setGameState(prev => ({
-          ...prev,
-          players: [...prev.players, message.data.player],
-        }));
-        // 播放玩家加入音效
-        soundManagerRef.current?.playSound('playerJoin');
-        break;
-        
-      case 'playerLeft':
-        setGameState(prev => ({
-          ...prev,
-          players: prev.players.filter(p => p.id !== message.data.playerId),
-        }));
-        // 播放玩家離開音效
-        soundManagerRef.current?.playSound('playerLeave');
-        break;
     }
   };
-
-
 
   // 擊打地鼠
   const handleMoleHit = useCallback((holeId: number) => {
@@ -496,7 +466,7 @@ const WhackAMoleGame: React.FC = () => {
     // 發送 scoreupdate 訊息到服務器，包含 player 的總分
     if (wsManagerRef.current) {
       wsManagerRef.current.send({
-        type: 'moleScoreUpdate',
+        type: 'mole-scoreupdate',
         data: {
           totalScore: newScore, // player 自己的總分
         },

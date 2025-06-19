@@ -134,12 +134,10 @@ export const MemoryCardGame: React.FC<MemoryCardGameProps> = ({
       // Ignore server score updates - we handle scoring on client side
     }, [actualNickname, roomId, gameState.score]),
     onTimeUpdate: useCallback((timeLeft: number) => {
-      console.log(`[MemoryCardGame] [${new Date().toISOString()}] Received time update from server:`, {
-        timeLeft: timeLeft,
-        currentTimeLeft: gameState.timeLeft,
-        playerNickname: actualNickname,
-        roomId: roomId
-      });
+      // console.log(`[MemoryCardGame] [${new Date().toISOString()}] Received time update from server:`, {
+      //   timeLeft,
+      //   playerNickname
+      // });
       // 更新本地時間狀態
       updateTimeLeft(timeLeft);
     }, [updateTimeLeft, actualNickname, roomId, gameState.timeLeft]),

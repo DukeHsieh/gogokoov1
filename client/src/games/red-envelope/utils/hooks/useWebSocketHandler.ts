@@ -100,11 +100,11 @@ export const useWebSocketHandler = ({
         
         // Add message handler for this component
         wsManager.addMessageHandler('redEnvelopeGame', (message: GameMessage) => {
-          console.log(`[WEBSOCKET RedEnvelopeGame] [${new Date().toISOString()}] Message from server:`, message.type, {
-            roomId: roomId,
-            playerNickname: playerNickname,
-            messageData: message
-          });
+          // console.log(`[WEBSOCKET RedEnvelopeGame] [${new Date().toISOString()}] Message from server:`, message.type, {
+          //   roomId: roomId,
+          //   playerNickname: playerNickname,
+          //   messageData: message
+          // });
           
           switch (message.type) {
             case 'gameData':
@@ -142,7 +142,7 @@ export const useWebSocketHandler = ({
               callbacksRef.current.onGameData?.(gameData);
               break;
               
-            case 'gameScoreUpdate':
+            case 'redenvelope-scoreupdate':
             case 'scoreUpdate':
               console.log(`[RedEnvelopeGame] [${new Date().toISOString()}] Score update:`, {
                 score: message.score,
@@ -204,7 +204,7 @@ export const useWebSocketHandler = ({
               });
               break;
               
-            case 'gameEnded':
+            case 'redenvelope-gameended':
               console.log(`[RedEnvelopeGame] [${new Date().toISOString()}] Game ended:`, {
                 reason: message.reason,
                 finalResults: message.finalResults,
@@ -216,13 +216,23 @@ export const useWebSocketHandler = ({
               callbacksRef.current.onGameEnded?.(message);
               break;
               
-            case 'gameTimeUpdate':
-            case 'timeUpdate':
-              console.log(`[RedEnvelopeGame] [${new Date().toISOString()}] Time update:`, {
-                timeLeft: message.timeLeft,
+            case 'gameEnded':
+              console.log(`[RedEnvelopeGame] [${new Date().toISOString()}] Game ended (platform message):`, {
                 playerNickname: playerNickname,
-                messageType: message.type
+                roomId: roomId,
+                fullMessage: message
               });
+              soundEffects.gameOver();
+              callbacksRef.current.onGameEnded?.(message);
+              break;
+              
+            case 'redenvelope-timeupdate':
+            case 'timeUpdate':
+              // console.log(`[RedEnvelopeGame] [${new Date().toISOString()}] Time update:`, {
+              //   timeLeft: message.timeLeft,
+              //   playerNickname: playerNickname,
+              //   messageType: message.type
+              // });
               
               if (message.timeLeft !== undefined) {
                 callbacksRef.current.onTimeUpdate?.(message.timeLeft);
@@ -337,15 +347,15 @@ export const useWebSocketHandler = ({
               break;
               
             case 'gameTimer':
-              console.log(`[RedEnvelopeGame] [${new Date().toISOString()}] Game timer update:`, {
-                timeLeft: message.data?.timeLeft,
-                status: message.data?.status,
-                playerNickname: playerNickname,
-                roomId: roomId
-              });
+              // console.log(`[RedEnvelopeGame] [${new Date().toISOString()}] Game timer update:`, {
+              //   timeLeft: message.data?.timeLeft,
+              //   status: message.data?.status,
+              //   playerNickname: playerNickname,
+              //   roomId: roomId
+              // });
               
               if (message.data?.timeLeft !== undefined) {
-                callbacksRef.current.onTimeUpdate?.(message.data.timeLeft);
+                // callbacksRef.current.onTimeUpdate?.(message.data.timeLeft);
               }
               
               // 如果遊戲狀態改變，也通知相關回調
@@ -396,108 +406,20 @@ export const useWebSocketHandler = ({
         isConnectedRef.current = false;
       });
 
-    // Cleanup function
+    // Cleanup function - only remove handlers when component unmounts for navigation
     return () => {
-      if (wsManagerRef.current) {
-        wsManagerRef.current.removeMessageHandler('redEnvelopeGame', 'game');
-      }
+      // Don't remove handlers on game end, only on actual component unmount
+      console.log('[RedEnvelopeGame] Component cleanup - keeping WebSocket connection open');
+      // Optionally remove handlers only if navigating away from game
+      // if (wsManagerRef.current) {
+      //   wsManagerRef.current.removeMessageHandler('redEnvelopeGame', 'game');
+      // }
     };
   }, [roomId, playerNickname, isHost]); // Remove callback functions from dependencies to prevent reconnections
 
-  // 發送分數更新消息
-  const sendScoreUpdate = (score: number) => {
-    console.log(`[RedEnvelopeGame] [${new Date().toISOString()}] Sending score update:`, {
-      score: score,
-      playerNickname: playerNickname,
-      roomId: roomId,
-      isConnected: isConnectedRef.current,
-      hasWSManager: !!wsManagerRef.current
-    });
-    
-    if (wsManagerRef.current && isConnectedRef.current) {
-      const message = {
-        type: 'scoreUpdate',
-        data: {
-          score
-        }
-      };
-      console.log(`[RedEnvelopeGame] [${new Date().toISOString()}] Sending WebSocket message:`, message);
-      wsManagerRef.current.send(message);
-    } else {
-      console.error(`[RedEnvelopeGame] [${new Date().toISOString()}] Cannot send score update - WebSocket not connected:`, {
-        hasWSManager: !!wsManagerRef.current,
-        isConnected: isConnectedRef.current,
-        score: score,
-        playerNickname: playerNickname
-      });
-    }
-  };
 
-  // 發送紅包收集消息
-  const sendEnvelopeCollected = (envelopeId: string, value: number) => {
-    console.log(`[RedEnvelopeGame] [${new Date().toISOString()}] Sending envelope collected:`, {
-      envelopeId: envelopeId,
-      value: value,
-      playerNickname: playerNickname,
-      roomId: roomId,
-      isConnected: isConnectedRef.current,
-      hasWSManager: !!wsManagerRef.current
-    });
-    
-    if (wsManagerRef.current && isConnectedRef.current) {
-      const message = {
-        type: 'envelopeCollected',
-        data: {
-          envelopeId,
-          value
-        }
-      };
-      console.log(`[RedEnvelopeGame] [${new Date().toISOString()}] Sending WebSocket message:`, message);
-      wsManagerRef.current.send(message);
-    } else {
-      console.error(`[RedEnvelopeGame] [${new Date().toISOString()}] Cannot send envelope collected - WebSocket not connected:`, {
-        hasWSManager: !!wsManagerRef.current,
-        isConnected: isConnectedRef.current,
-        envelopeId: envelopeId,
-        value: value,
-        playerNickname: playerNickname
-      });
-    }
-  };
-
-  // 發送遊戲結束消息
-  const sendGameEnded = (finalScore: number) => {
-    console.log(`[RedEnvelopeGame] [${new Date().toISOString()}] Sending game ended:`, {
-      finalScore: finalScore,
-      playerNickname: playerNickname,
-      roomId: roomId,
-      isConnected: isConnectedRef.current,
-      hasWSManager: !!wsManagerRef.current
-    });
-    
-    if (wsManagerRef.current && isConnectedRef.current) {
-      const message = {
-        type: 'gameEnded',
-        data: {
-          finalScore
-        }
-      };
-      console.log(`[RedEnvelopeGame] [${new Date().toISOString()}] Sending WebSocket message:`, message);
-      wsManagerRef.current.send(message);
-    } else {
-      console.error(`[RedEnvelopeGame] [${new Date().toISOString()}] Cannot send game ended - WebSocket not connected:`, {
-        hasWSManager: !!wsManagerRef.current,
-        isConnected: isConnectedRef.current,
-        finalScore: finalScore,
-        playerNickname: playerNickname
-      });
-    }
-  };
 
   return {
-    sendScoreUpdate,
-    sendEnvelopeCollected,
-    sendGameEnded,
     isConnected: isConnectedRef.current
   };
 };

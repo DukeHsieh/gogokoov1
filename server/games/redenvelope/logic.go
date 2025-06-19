@@ -21,7 +21,7 @@ func startTimeUpdates(gameRoom *core.Room, gameData *GameData) {
 
 				// Broadcast time update
 				room.BroadcastToRoom(gameRoom, map[string]interface{}{
-					"type": "timeUpdate",
+					"type": "redenvelope-timeupdate",
 					"data": map[string]interface{}{
 						"timeLeft": gameData.TimeLeft,
 					},
@@ -45,30 +45,27 @@ func UpdatePlayerScore(gameRoom *core.Room, playerID, nickname string, totalScor
 	if gameRoom.GameEnded {
 		return
 	}
-
 	// Find the client and update their score
 	for client := range gameRoom.PlayerClients {
 		if client.Nickname == nickname {
 			client.Score = totalScore
 			log.Printf("[REDENVELOPE] Player %s score updated to %d in room %s", nickname, totalScore, gameRoom.ID)
-			
 			// Broadcast score update
-			room.BroadcastToRoom(gameRoom, map[string]interface{}{
-				"type":   "scoreUpdate",
-				"player": nickname,
-				"score":  totalScore,
-			})
-			
-			// Broadcast leaderboard update
-			leaderboard := calculateLeaderboard(gameRoom)
-			room.BroadcastToRoom(gameRoom, map[string]interface{}{
-				"type":    "leaderboard",
-				"players": leaderboard,
-			})
-			
+			//room.BroadcastToRoom(gameRoom, map[string]interface{}{
+			//	"type":   "redenvelope-scoreupdate",
+			//	"player": nickname,
+			//	"score":  totalScore,
+			//})
 			break
 		}
 	}
+	// Broadcast leaderboard update
+	leaderboard := calculateLeaderboard(gameRoom)
+	room.BroadcastToHost(gameRoom, map[string]interface{}{
+		"type":    "redenvelope-leaderboard",
+		"players": leaderboard,
+	})
+
 }
 
 // calculateLeaderboard calculates and returns player rankings
@@ -115,7 +112,7 @@ func HandleGameEnd(gameRoom *core.Room) {
 
 	// Broadcast game end to all clients
 	room.BroadcastToRoom(gameRoom, map[string]interface{}{
-		"type":    "redEnvelopeGameEnd",
+		"type":    "redenvelope-gameend",
 		"players": leaderboard,
 		"message": "Red envelope game completed!",
 	})
@@ -159,36 +156,4 @@ func StartRedEnvelopeGame(gameRoom *core.Room, settings GameSettings) {
 	})
 
 	log.Printf("[REDENVELOPE] Red envelope game started for room %s with %d seconds", gameRoom.ID, settings.Duration)
-}
-
-// calculateRankings calculates and returns current player rankings
-func calculateRankings(gameRoom *core.Room) []PlayerScore {
-	var rankings []PlayerScore
-
-	for client := range gameRoom.AllClients {
-		rankings = append(rankings, PlayerScore{
-			Nickname:       client.Nickname,
-			Score:          client.Score,
-			CollectedCount: 0, // We'll track this separately if needed
-		})
-	}
-
-	// Sort by score (descending)
-	sort.Slice(rankings, func(i, j int) bool {
-		return rankings[i].Score > rankings[j].Score
-	})
-
-	// Assign ranks
-	for i := range rankings {
-		rankings[i].Rank = i + 1
-	}
-
-	return rankings
-}
-
-
-
-// calculateFinalRankings returns final game rankings
-func calculateFinalRankings(gameRoom *core.Room) []PlayerScore {
-	return calculateRankings(gameRoom)
 }

@@ -84,7 +84,7 @@ const WhackAMoleGameSettings: React.FC = () => {
   const handleStartGame = () => {
     if (wsManagerRef.current) {
       wsManagerRef.current.send({
-        type: 'hostStartGame',
+        type: 'mole-startgame',
         data: {
           gameType: 'whackmole',
           gameSettings: settings,

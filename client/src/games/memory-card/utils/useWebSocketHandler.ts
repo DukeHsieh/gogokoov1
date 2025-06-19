@@ -156,11 +156,11 @@ export const useWebSocketHandler = ({
               break;
               
             case 'memory-timeupdate':
-              console.log(`[MemoryCardGame] [${new Date().toISOString()}] Time update:`, {
-                timeLeft: message.timeLeft,
-                playerNickname: playerNickname,
-                messageType: message.type
-              });
+              // console.log(`[MemoryCardGame] [${new Date().toISOString()}] Time update:`, {
+              //   timeLeft: message.timeLeft,
+              //   playerNickname: playerNickname,
+              //   messageType: message.type
+              // });
               
               callbacksRef.current.onTimeUpdate?.(message.timeLeft);
               break;

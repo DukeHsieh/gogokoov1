@@ -49,7 +49,7 @@ export const useGameState = ({ roomId, gameSettings, initialTimeLeft }: UseGameS
         ...prev,
         timeLeft: actualGameDuration
       }));
-      console.log('[useGameState] Updated game time with stored settings:', actualGameDuration);
+      // console.log('[useGameState] Updated game time with stored settings:', actualGameDuration);
     }
   }, [storedGameSettings]);
 
@@ -301,11 +301,11 @@ export const useGameState = ({ roomId, gameSettings, initialTimeLeft }: UseGameS
       const newState = { ...prev, timeLeft };
       // 只在時間變化較大時記錄日誌，避免過多的日誌
       if (Math.abs(prev.timeLeft - timeLeft) > 5 || timeLeft <= 10) {
-        console.log(`[useGameState] [${new Date().toISOString()}] Time updated:`, {
-          previousTime: prev.timeLeft,
-          newTime: timeLeft,
-          roomId: roomId
-        });
+        // console.log(`[useGameState] [${new Date().toISOString()}] Time updated:`, {
+        //   previousTime: prev.timeLeft,
+        //   newTime: timeLeft,
+        //   roomId: roomId
+        // });
       }
       return newState;
     });

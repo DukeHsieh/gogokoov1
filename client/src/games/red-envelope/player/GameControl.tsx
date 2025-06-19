@@ -43,7 +43,7 @@ const GameControl: React.FC<GameControlProps> = () => {
   }, [initialGameSettings, initialGameData]);
 
   // 使用 useWebSocketHandler 處理 WebSocket 連接和訊息
-  const { sendScoreUpdate, sendEnvelopeCollected, sendGameEnded } = useWebSocketHandler({
+  const { } = useWebSocketHandler({
     roomId,
     playerNickname,
     isHost,
@@ -89,21 +89,18 @@ const GameControl: React.FC<GameControlProps> = () => {
   }, [roomId, navigate, playerNickname]);
 
   const handleScoreUpdate = (score: number) => {
-    console.log('[GameControl] Updating score:', score);
-    sendScoreUpdate(score);
+    console.log('[GameControl] Score updated:', score);
+    // Score updates are now handled directly in RedEnvelopeGame
   };
 
   const handleGameEnd = (finalScore?: number) => {
     console.log('[GameControl] Game ended with final score:', finalScore);
-    if (finalScore !== undefined) {
-      sendGameEnded(finalScore);
-    }
     // 遊戲結束邏輯由 useWebSocketHandler 的 onGameEnded 回調處理
   };
 
   const handleEnvelopeCollected = (envelopeId: string, value: number) => {
     console.log('[GameControl] Envelope collected:', { envelopeId, value });
-    sendEnvelopeCollected(envelopeId, value);
+    //sendEnvelopeCollected(envelopeId, value);
   };
 
   console.log('[GameControl] Current game data:', gameData);
@@ -136,6 +133,8 @@ const GameControl: React.FC<GameControlProps> = () => {
       onGameEnd={handleGameEnd}
       onEnvelopeCollected={handleEnvelopeCollected}
       isHost={isHost}
+      roomId={roomId}
+      playerNickname={playerNickname}
     />
   );
 };

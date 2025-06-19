@@ -556,7 +556,7 @@ const HostGameMonitor: React.FC = () => {
               break;
 
             case 'memory-timeupdate':
-              console.log('[HOST MONITOR] Received time update from server:', message.timeLeft, 'type:', message.type);
+        // console.log('[HOST MONITOR] Received time update from server:', message.timeLeft, 'type:', message.type);
               setTimeLeft(message.timeLeft);
               break;
 

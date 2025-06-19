@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { soundEffects } from '../utils/soundEffects';
 import { DEFAULT_GAME_SETTINGS } from './gameConfig';
 import type { GameData, Player } from '../utils/types/index';
+import WebSocketManager from '../../../utils/WebSocketManager';
 import './GameOverScreen.css';
 
 interface RedEnvelopeGameProps {
@@ -274,6 +275,9 @@ export const RedEnvelopeGame: React.FC<RedEnvelopeGameProps> = ({
             // 通知服務器
             onEnvelopeCollected?.(envelope.id, envelope.value);
             
+            //send score update
+            //sendScoreUpdate(newScore, newCollectedCount);
+
             return {
               ...envelope,
               isCollected: true
@@ -296,52 +300,48 @@ export const RedEnvelopeGame: React.FC<RedEnvelopeGameProps> = ({
     return () => clearInterval(collisionInterval);
   }, [gameState.status, onEnvelopeCollected]);
 
-  // WebSocket 連接和通信
-  const wsRef = useRef<WebSocket | null>(null);
+  // WebSocket 連接和通信 - 使用現有的平台連接
+  const wsManagerRef = useRef<any>(null);
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    if (roomId) {
-      // 建立WebSocket連接
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}/ws?roomId=${roomId}&nickname=${encodeURIComponent(playerNickname)}`;
-      
-      wsRef.current = new WebSocket(wsUrl);
-      
-      wsRef.current.onopen = () => {
-        console.log('[RedEnvelopeGame] WebSocket connected');
-        setIsConnected(true);
-      };
-      
-      wsRef.current.onclose = () => {
-        console.log('[RedEnvelopeGame] WebSocket disconnected');
-        setIsConnected(false);
-      };
-      
-      wsRef.current.onerror = (error) => {
-        console.error('[RedEnvelopeGame] WebSocket error:', error);
-      };
-      
-      wsRef.current.onmessage = (event) => {
-        try {
-          const message = JSON.parse(event.data);
-          handleWebSocketMessage(message);
-        } catch (error) {
-          console.error('[RedEnvelopeGame] Failed to parse WebSocket message:', error);
-        }
-      };
+    if (!roomId || !playerNickname) {
+      console.error('[RedEnvelopeGame] Missing roomId or playerNickname');
+      return;
     }
+
+    // 使用 WebSocketManager 的現有連接
+    const wsManager = WebSocketManager.getInstance();
+    wsManagerRef.current = wsManager;
     
+    // 使用現有連接或建立新連接
+    wsManager.connect(roomId, playerNickname, isHost)
+      .then(() => {
+        console.log('[RedEnvelopeGame] WebSocket connection established');
+        setIsConnected(true);
+        
+        // 註冊遊戲消息處理器
+        wsManager.addMessageHandler('redEnvelopeGame', (message: any) => {          
+          handleWebSocketMessage(message);
+        }, 'game');
+      })
+      .catch((error: any) => {
+        console.error('[RedEnvelopeGame] Failed to connect WebSocket:', error);
+        setIsConnected(false);
+      });
+    
+    // 清理函數
     return () => {
-      if (wsRef.current) {
-        wsRef.current.close();
+      if (wsManagerRef.current) {
+        wsManagerRef.current.removeMessageHandler('redEnvelopeGame', 'game');
       }
     };
-  }, [roomId, playerNickname]);
+  }, [roomId, playerNickname, isHost]);
 
   // 處理WebSocket消息
   const handleWebSocketMessage = (message: any) => {
     switch (message.type) {
+      case 'redenvelope-startgame':
       case 'platformGameStarted':
         console.log('[RedEnvelopeGame] Game started:', message);
         if (message.data && message.data.gameData) {
@@ -352,8 +352,8 @@ export const RedEnvelopeGame: React.FC<RedEnvelopeGameProps> = ({
           }));
         }
         break;
-      case 'timeUpdate':
-        console.log('[RedEnvelopeGame] Time update:', message);
+      case 'redenvelope-timeupdate':
+        // console.log('[RedEnvelopeGame] Time update:', message);
         if (message.data && typeof message.data.timeLeft === 'number') {
           setGameState(prev => ({
             ...prev,
@@ -361,20 +361,7 @@ export const RedEnvelopeGame: React.FC<RedEnvelopeGameProps> = ({
           }));
         }
         break;
-      case 'leaderboard':
-        console.log('[RedEnvelopeGame] Leaderboard update:', message);
-        if (message.data && Array.isArray(message.data)) {
-          const playerRanking = message.data.find((r: any) => r.nickname === playerNickname);
-          if (playerRanking) {
-            setGameState(prev => ({
-              ...prev,
-              rank: playerRanking.rank,
-              totalPlayers: message.data.length
-            }));
-          }
-        }
-        break;
-      case 'redEnvelopeGameEnd':
+      case 'redenvelope-gameend':
         console.log('[RedEnvelopeGame] Game ended:', message);
         setGameState(prev => ({
           ...prev,
@@ -385,6 +372,7 @@ export const RedEnvelopeGame: React.FC<RedEnvelopeGameProps> = ({
         }
         onGameEnd?.(gameState.score);
         break;
+
       default:
         console.log('[RedEnvelopeGame] Unhandled WebSocket message:', message);
     }
@@ -392,18 +380,34 @@ export const RedEnvelopeGame: React.FC<RedEnvelopeGameProps> = ({
 
   // 發送分數更新到服務器
   const sendScoreUpdate = useCallback((score: number, collectedCount: number) => {
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+    console.log('[RedEnvelopeGame] Attempting to send score update:', {
+      score,
+      collectedCount,
+      isConnected: isConnected,
+      hasWSManager: !!wsManagerRef.current
+    });
+    
+    if (wsManagerRef.current && isConnected) {
       const message = {
-        type: 'redEnvelopeScoreUpdate',
+        type: 'redenvelope-scoreupdate',
         data: {
-          totalScore: score,
-          collectedCount
+          totalScore: Number(score),
+          collectedCount: Number(collectedCount)
         }
       };
-      wsRef.current.send(JSON.stringify(message));
-      console.log('[RedEnvelopeGame] Sent score update:', message);
+      try {
+        wsManagerRef.current.send(message);
+        console.log('[RedEnvelopeGame] Successfully sent score update:', message);
+      } catch (error) {
+        console.error('[RedEnvelopeGame] Failed to send score update:', error);
+      }
+    } else {
+      console.warn('[RedEnvelopeGame] Cannot send score update - WebSocket not connected:', {
+        hasWSManager: !!wsManagerRef.current,
+        isConnected: isConnected
+      });
     }
-  }, []);
+  }, [isConnected]);
 
   // 分數更新通知
   useEffect(() => {

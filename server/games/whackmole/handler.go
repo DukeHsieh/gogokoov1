@@ -24,16 +24,18 @@ func registerHandlers() {
 		return
 	}
 	// Register whack-a-mole game specific message types
-	registrar.RegisterHandler("moleScoreUpdate", HandleWhackAMoleGameMessage)
+	registrar.RegisterHandler("mole-scoreupdate", HandleWhackAMoleGameMessage)
 	// Register whack-a-mole game start handler
-	registrar.RegisterGameStartHandler("whackmole", HandleWhackAMoleHostStartGame)
+	registrar.RegisterHandler("mole-startgame", HandleWhackAMoleGameMessage)
 }
 
 // HandleWhackAMoleGameMessage processes whack-a-mole game specific messages
 func HandleWhackAMoleGameMessage(gameRoom *core.Room, client *core.Client, message core.Message) {
 	switch message.Type {
-	case "moleScoreUpdate":
+	case "mole-scoreupdate":
 		handleScoreUpdate(gameRoom, client, message)
+	case "mole-startgame", "hostStartGame":
+		HandleWhackAMoleHostStartGame(gameRoom, client, message)
 	default:
 		log.Printf("[WHACKMOLE] Unknown whack-a-mole game message type: %s", message.Type)
 	}
@@ -41,16 +43,9 @@ func HandleWhackAMoleGameMessage(gameRoom *core.Room, client *core.Client, messa
 
 // HandleWhackAMoleHostStartGame handles whack-a-mole game start messages
 func HandleWhackAMoleHostStartGame(gameRoom *core.Room, client *core.Client, message core.Message) {
-	// Extract message data
-	dataMap, ok := message.Data.(map[string]interface{})
-	if !ok {
-		log.Printf("[WHACKMOLE] Invalid message data format")
-		return
-	}
-
 	log.Printf("[WHACKMOLE] Starting whack-a-mole game for host %s", client.Nickname)
-	// Call the existing whack-a-mole websocket handler
-	HandleWhackAMoleWebSocketMessage(gameRoom, client, dataMap)
+	// Call the game start logic directly to avoid recursion
+	handleHostStartGame(gameRoom, client, message)
 }
 
 // handleScoreUpdate processes score update messages from client
@@ -71,59 +66,90 @@ func handleScoreUpdate(gameRoom *core.Room, client *core.Client, message core.Me
 		return
 	}
 
-	// Extract total score
-	totalScore, scoreOk := dataMap["totalScore"].(float64)
-	if !scoreOk {
-		log.Printf("[WHACKMOLE] Invalid totalScore in message data")
+	// Extract data from dataMap['data']
+	rawData, ok := dataMap["data"]
+	if !ok {
+		log.Printf("[WHACKMOLE] 'data' key not found in message data")
+		return
+	}
+	// extract totalScore from rawData
+	rawScore, ok := rawData.(map[string]interface{})
+	if !ok {
+		log.Printf("[WHACKMOLE] 'data' is not a map")
+		return
+	}
+	totalScore, ok := rawScore["totalScore"].(float64)
+	if !ok {
+		log.Printf("[WHACKMOLE] 'totalScore' key not found in message data")
 		return
 	}
 
 	// Update player score in game
 	UpdatePlayerScore(gameRoom, client.Nickname, client.Nickname, int(totalScore))
 
-	// Send updated leaderboard to room
-	room.BroadcastToRoom(gameRoom, map[string]interface{}{
-		"type":   "leaderboard",
-		"player": client.Nickname,
-		"score":  int(totalScore),
+	// Calculate and send updated leaderboard to host
+	leaderboard := calculateLeaderboard(gameRoom)
+
+	room.BroadcastToHost(gameRoom, map[string]interface{}{
+		"type":        "mole-leaderboard",
+		"leaderboard": leaderboard,
 	})
 
 	log.Printf("[WHACKMOLE] Player %s updated total score to %d", client.Nickname, int(totalScore))
 }
 
-// handleHostStartGame handles game start from host
+// handleHostStartGame processes host start game messages
 func handleHostStartGame(gameRoom *core.Room, client *core.Client, message core.Message) {
+	// Check if client is host
 	if !client.IsHost {
-		log.Printf("[WHACKMOLE] Non-host %s tried to start game", client.Nickname)
+		log.Printf("[WHACKMOLE] Non-host client %s attempted to start game", client.Nickname)
 		return
 	}
 
-	log.Printf("[WHACKMOLE] Host %s starting game", client.Nickname)
+	// Extract message data
+	dataMap, ok := message.Data.(map[string]interface{})
+	if !ok {
+		log.Printf("[WHACKMOLE] Invalid message data format")
+		return
+	}
 
-	// Extract game settings from message
+	// Extract game settings with defaults
+	duration := 60 // default 60 seconds
+	if d, exists := dataMap["duration"]; exists {
+		if dFloat, ok := d.(float64); ok {
+			duration = int(dFloat)
+		}
+	}
+
+	moleSpawnInterval := 1000 // default 1 second
+	if msi, exists := dataMap["moleSpawnInterval"]; exists {
+		if msiFloat, ok := msi.(float64); ok {
+			moleSpawnInterval = int(msiFloat)
+		}
+	}
+
+	moleLifetime := 2000 // default 2 seconds
+	if ml, exists := dataMap["moleLifetime"]; exists {
+		if mlFloat, ok := ml.(float64); ok {
+			moleLifetime = int(mlFloat)
+		}
+	}
+
+	moleCount := 9 // default 9 holes
+	if mc, exists := dataMap["moleCount"]; exists {
+		if mcFloat, ok := mc.(float64); ok {
+			moleCount = int(mcFloat)
+		}
+	}
+
+	// Create game settings
 	settings := GameSettings{
-		Duration:          60,   // Default 60 seconds
-		MoleSpawnInterval: 1500, // Default 1.5 seconds
-		MoleLifetime:      2000, // Default 2 seconds
-		MoleCount:         9,    // Default 9 holes
+		Duration:          duration,
+		MoleSpawnInterval: moleSpawnInterval,
+		MoleLifetime:      moleLifetime,
+		MoleCount:         moleCount,
 	}
 
-	// Try to extract settings from message data
-	if dataMap, ok := message.Data.(map[string]interface{}); ok {
-		if duration, exists := dataMap["duration"].(float64); exists {
-			settings.Duration = int(duration)
-		}
-		if interval, exists := dataMap["moleSpawnInterval"].(float64); exists {
-			settings.MoleSpawnInterval = int(interval)
-		}
-		if lifetime, exists := dataMap["moleLifetime"].(float64); exists {
-			settings.MoleLifetime = int(lifetime)
-		}
-		if count, exists := dataMap["moleCount"].(float64); exists {
-			settings.MoleCount = int(count)
-		}
-	}
-
-	// Start the whack-a-mole game using the new logic function
+	// Start the game
 	StartWhackAMoleGame(gameRoom, settings)
 }

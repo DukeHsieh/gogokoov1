@@ -133,7 +133,7 @@ class WebSocketManager {
           this.processedMessages.add(messageHash);
           this.lastMessageTime = currentTime;
           
-          console.log('[WebSocketManager] Processing message:', message);
+          // console.log('[WebSocketManager] Processing message:', message);
           
           // 處理遊戲狀態變化
           if (message.type === 'platformGameStarted') {
@@ -145,17 +145,17 @@ class WebSocketManager {
               roomId: this.gameState.roomId
             });
           } else if (message.type === 'gameEnded') {
-            this.gameState.isGameActive = false;
-            this.gameState.gameType = null;
-            console.log('[WebSocketManager] Game ended - connection unlocked');
+          this.gameState.isGameActive = false;
+          this.gameState.gameType = null;
+          console.log('[WebSocketManager] Game ended - connection unlocked (but keeping connection open)');
           }
           
           // Route messages to appropriate handlers based on type prefix
-          console.log('[WebSocketManager] Routing message type:', message.type);
+          // console.log('[WebSocketManager] Routing message type:', message.type);
           if (message.type.startsWith('platform')) {
             this.platformHandlers.forEach((handler) => {
               try {
-                console.log('[WebSocketManager] Sending to platform handler:', message.type);
+                // console.log('[WebSocketManager] Sending to platform handler:', message.type);
                 handler(message);
               } catch (error) {
                 console.error('Error in platform handler:', error);
@@ -164,7 +164,7 @@ class WebSocketManager {
           } else if (message.type.startsWith('game')) {
             this.gameHandlers.forEach((handler) => {
               try {
-                console.log('[WebSocketManager] Sending to game handler:', message.type);
+                // console.log('[WebSocketManager] Sending to game handler:', message.type);
                 handler(message);
               } catch (error) {
                 console.error('Error in game handler:', error);
@@ -174,7 +174,7 @@ class WebSocketManager {
             // For backward compatibility, send to both handlers
             [...this.platformHandlers.values(), ...this.gameHandlers.values()].forEach((handler) => {
               try {
-                console.log('[WebSocketManager] Sending to both handlers:', message.type);
+                // console.log('[WebSocketManager] Sending to both handlers:', message.type);
                 handler(message);
               } catch (error) {
                 console.error('Error in message handler:', error);
@@ -254,22 +254,27 @@ class WebSocketManager {
   }
 
   public disconnect(): void {
-    // 只有在遊戲未進行時才允許斷開連接
+    // Allow disconnection but don't automatically close on game end
+    if (this.ws) {
+      this.ws.close(1000, 'Normal closure');
+      this.ws = null;
+    }
+    this.gameState = {
+      isGameActive: false,
+      gameType: null,
+      roomId: null,
+      playerNickname: null,
+      isHost: false
+    };
+    this.platformHandlers.clear();
+    this.gameHandlers.clear();
+    console.log('[WebSocketManager] Disconnected');
+  }
+
+  public disconnectIfGameInactive(): void {
+    // Only disconnect if game is not active (legacy behavior)
     if (!this.gameState.isGameActive) {
-      if (this.ws) {
-        this.ws.close(1000, 'Normal closure');
-        this.ws = null;
-      }
-      this.gameState = {
-        isGameActive: false,
-        gameType: null,
-        roomId: null,
-        playerNickname: null,
-        isHost: false
-      };
-      this.platformHandlers.clear();
-      this.gameHandlers.clear();
-      console.log('[WebSocketManager] Disconnected');
+      this.disconnect();
     } else {
       console.warn('[WebSocketManager] Cannot disconnect while game is active');
     }

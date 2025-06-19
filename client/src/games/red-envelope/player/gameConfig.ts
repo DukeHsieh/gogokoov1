@@ -110,7 +110,7 @@ export const GAME_STATUS = {
 export const MESSAGE_TYPES = {
   GAME_START: 'gameStart',
   GAME_END: 'gameEnd',
-  SCORE_UPDATE: 'scoreUpdate',
+  SCORE_UPDATE: 'redenvelope-scoreupdate',
   ENVELOPE_COLLECTED: 'envelopeCollected',
   PLAYER_RANKING: 'playerRanking'
 } as const;
