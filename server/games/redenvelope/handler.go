@@ -24,24 +24,15 @@ func registerHandlers() {
 		return
 	}
 	// Register red envelope game specific message types
-	registrar.RegisterHandler("collectEnvelope", HandleRedEnvelopeGameMessage)
-	registrar.RegisterHandler("gameStart", HandleRedEnvelopeGameMessage)
-	registrar.RegisterHandler("gameEnd", HandleRedEnvelopeGameMessage)
-	registrar.RegisterHandler("redEnvelopeScoreUpdate", HandleRedEnvelopeGameMessage)
+	registrar.RegisterHandler("redenvelope-scoreupdate", HandleRedEnvelopeGameMessage)
 	// Register red envelope game start handler
-	registrar.RegisterGameStartHandler("redenvelope", HandleRedEnvelopeHostStartGame)
+	registrar.RegisterHandler("redenvelope-startgame", HandleRedEnvelopeHostStartGame)
 }
 
 // HandleRedEnvelopeGameMessage processes red envelope game specific messages
 func HandleRedEnvelopeGameMessage(gameRoom *core.Room, client *core.Client, message core.Message) {
 	switch message.Type {
-	case "collectEnvelope":
-		handleCollectEnvelope(gameRoom, client, message)
-	case "gameStart":
-		handleGameStart(gameRoom, client, message)
-	case "gameEnd":
-		handleGameEnd(gameRoom, client, message)
-	case "redEnvelopeScoreUpdate":
+	case "redenvelope-scoreupdate":
 		handleScoreUpdate(gameRoom, client, message)
 	default:
 		log.Printf("[REDENVELOPE] Unknown red envelope game message type: %s", message.Type)
@@ -53,24 +44,6 @@ func HandleRedEnvelopeHostStartGame(gameRoom *core.Room, client *core.Client, me
 	log.Printf("[REDENVELOPE] Starting red envelope game for host %s", client.Nickname)
 	// Call the existing red envelope game start handler
 	handleHostStartGame(gameRoom, client, message)
-}
-
-// handleCollectEnvelope processes envelope collection messages
-func handleCollectEnvelope(gameRoom *core.Room, client *core.Client, message core.Message) {
-	log.Printf("[REDENVELOPE] Processing collectEnvelope from %s", client.Nickname)
-	// Add envelope collection logic here
-}
-
-// handleGameStart processes game start messages
-func handleGameStart(gameRoom *core.Room, client *core.Client, message core.Message) {
-	log.Printf("[REDENVELOPE] Processing gameStart from %s", client.Nickname)
-	// Add game start logic here
-}
-
-// handleGameEnd processes game end messages
-func handleGameEnd(gameRoom *core.Room, client *core.Client, message core.Message) {
-	log.Printf("[REDENVELOPE] Processing gameEnd from %s", client.Nickname)
-	// Add game end logic here
 }
 
 // handleHostStartGame handles game start from host
@@ -114,6 +87,11 @@ func handleHostStartGame(gameRoom *core.Room, client *core.Client, message core.
 func handleScoreUpdate(gameRoom *core.Room, client *core.Client, message core.Message) {
 	log.Printf("[REDENVELOPE] Processing scoreUpdate from %s", client.Nickname)
 
+	// Debug: Print the entire message structure
+	log.Printf("[REDENVELOPE] Full message: %+v", message)
+	log.Printf("[REDENVELOPE] Message.Data type: %T", message.Data)
+	log.Printf("[REDENVELOPE] Message.Data value: %+v", message.Data)
+
 	// Extract score data from message
 	dataMap, ok := message.Data.(map[string]interface{})
 	if !ok {
@@ -121,21 +99,39 @@ func handleScoreUpdate(gameRoom *core.Room, client *core.Client, message core.Me
 		return
 	}
 
-	// Extract total score
-	totalScore, scoreOk := dataMap["totalScore"].(float64)
-	if !scoreOk {
-		log.Printf("[REDENVELOPE] Invalid totalScore in message data")
+	// Debug: Print the dataMap contents
+	log.Printf("[REDENVELOPE] DataMap contents: %+v", dataMap)
+	for key, value := range dataMap {
+		log.Printf("[REDENVELOPE] Key: %s, Value: %+v, Type: %T", key, value, value)
+	}
+
+	// Extract data from dataMap['data']
+	rawData, ok := dataMap["data"]
+	if !ok {
+		log.Printf("[REDENVELOPE] 'data' key not found in message data")
+		return
+	}
+	// extract totalScore from rawData
+	rawScore, ok := rawData.(map[string]interface{})
+	if !ok {
+		log.Printf("[REDENVELOPE] 'data' is not a map")
+		return
+	}
+	totalScore, ok := rawScore["totalScore"].(float64)
+	if !ok {
+		log.Printf("[REDENVELOPE] 'totalScore' key not found in message data")
 		return
 	}
 
 	// Update player score in game
 	UpdatePlayerScore(gameRoom, client.Nickname, client.Nickname, int(totalScore))
 
-	// Send updated leaderboard to room
-	room.BroadcastToRoom(gameRoom, map[string]interface{}{
-		"type":   "leaderboard",
-		"player": client.Nickname,
-		"score":  int(totalScore),
+	// Calculate and send updated leaderboard to host
+	leaderboard := calculateLeaderboard(gameRoom)
+
+	room.BroadcastToHost(gameRoom, map[string]interface{}{
+		"type":        "redenvelope-leaderboard",
+		"leaderboard": leaderboard,
 	})
 
 	log.Printf("[REDENVELOPE] Player %s updated total score to %d", client.Nickname, int(totalScore))

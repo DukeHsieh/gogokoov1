@@ -57,12 +57,14 @@ const HostGameMonitor: React.FC = () => {
   const initialGameData = gameState?.gameData;
   const initialGameSettings = gameState?.gameSettings;
   
-  console.log('[HOST] Initial state from WaitingRoom:', {
-    playerNickname,
-    isHost,
-    gameData: initialGameData,
-    gameSettings: initialGameSettings
-  });
+  useEffect(() => {
+    console.log('[HOST] Initial state from WaitingRoom:', {
+      playerNickname,
+      isHost,
+      gameData: initialGameData,
+      gameSettings: initialGameSettings
+    });
+  }, []);
   
   const [isConnected, setIsConnected] = useState(false);
   const [players, setPlayers] = useState<Player[]>([]);
@@ -154,7 +156,7 @@ const HostGameMonitor: React.FC = () => {
         if (isHost && gameSettings) {
           console.log('[HOST] Auto-starting game with settings:', gameSettings);
           const startGameMessage = {
-            type: 'hostStartGame',
+            type: 'redenvelope-startgame',
             data: {
               gameType: 'redenvelope',
               duration: gameSettings.duration * 60,
@@ -171,7 +173,7 @@ const HostGameMonitor: React.FC = () => {
 
         // Add message handler for this component
         wsManager.addMessageHandler('redEnvelopeHostMonitor', (message: any) => {
-          console.log('[HOST] Received message:', message);
+          // console.log('[HOST] Received message:', message);
 
           switch (message.type) {
             case 'platformGameStarted':
@@ -183,15 +185,15 @@ const HostGameMonitor: React.FC = () => {
               }));
               break;
 
-            case 'timeUpdate':
-              console.log('[HOST] Received time update:', message.data?.timeLeft, 'type:', message.type);
+            case 'redenvelope-timeupdate':
+        // console.log('[HOST] Received time update:', message.data?.timeLeft, 'type:', message.type);
               setCurrentGameState(prev => ({
                 ...prev,
                 timeLeft: message.data?.timeLeft || prev.timeLeft
               }));
               break;
 
-            case 'redEnvelopeGameEnd':
+            case 'redenvelope-gameend':
               console.log('[HOST] Game ended:', message);
               setCurrentGameState(prev => ({
                 ...prev,
@@ -204,10 +206,10 @@ const HostGameMonitor: React.FC = () => {
               }
               break;
 
-            case 'leaderboard':
+            case 'redenvelope-leaderboard':
               console.log('[HOST] Received leaderboard update:', message);
-              if (message.data && Array.isArray(message.data)) {
-                const newPlayers = message.data.map((player: any) => ({
+              if (message.players && Array.isArray(message.players)) {
+                const newPlayers = message.players.map((player: any) => ({
                   id: player.nickname,
                   nickname: player.nickname,
                   score: player.score || 0,
@@ -217,6 +219,7 @@ const HostGameMonitor: React.FC = () => {
                   collectedCount: player.collectedCount || 0,
                   rank: player.rank || 0
                 }));
+                console.log('[HOST] Updated player list:', newPlayers);
                 setPlayers(newPlayers);
                 setCurrentGameState(prev => ({
                   ...prev,
@@ -252,11 +255,6 @@ const HostGameMonitor: React.FC = () => {
                 status: 'waiting'
               }));
               break;
-
-            case 'platformNotification':
-              console.log('[HOST] Platform notification:', message.message);
-              break;
-
             default:
               console.log('[HOST] Unknown message type:', message.type);
           }
